@@ -34,6 +34,15 @@ function toCoordinate(x, y) {
   return `${coordinatePrefix}${String(x).padStart(2, "0")}${String(y).padStart(2, "0")}`;
 }
 
+function toNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function calculateItemTotal(item) {
+  return toNumber(item.carton) * toNumber(item.cartonSize) + toNumber(item.single);
+}
+
 function updateGridCoordinates() {
   coordinatePrefix = getCoordinatePrefix();
 
@@ -121,6 +130,8 @@ function renderItemsList(target, coordinate, forEdit = false) {
     return;
   }
 
+  const slotTotal = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
+
   target.innerHTML = items
     .map(
       (item, idx) => `
@@ -129,14 +140,16 @@ function renderItemsList(target, coordinate, forEdit = false) {
         <strong>Code:</strong> ${item.code || "-"}<br />
         <strong>Description:</strong> ${item.description || "-"}<br />
         <strong>Carton:</strong> ${item.carton || "-"}<br />
+        <strong>Carton Size:</strong> ${item.cartonSize || "-"}<br />
         <strong>Single:</strong> ${item.single || "-"}<br />
+        <strong>Total Units:</strong> ${calculateItemTotal(item)}<br />
         <strong>Date:</strong> ${item.date || "-"}<br />
         <strong>Notes:</strong> ${item.notes || "-"}
         ${forEdit ? `<div class="item-row-actions"><button type="button" class="edit-existing-item" data-item-index="${item.index}">Edit Item</button></div>` : ""}
       </div>
     `,
     )
-    .join("");
+    .join("") + `<p><strong>Slot Total Units:</strong> ${slotTotal}</p>`;
 }
 
 function resetEditState() {
@@ -159,6 +172,7 @@ function startEditItem(itemIndex) {
   editForm.elements.code.value = item.code || "";
   editForm.elements.description.value = item.description || "";
   editForm.elements.carton.value = item.carton || "";
+  editForm.elements.cartonSize.value = item.cartonSize || "";
   editForm.elements.single.value = item.single || "";
   editForm.elements.date.value = item.date || "";
   editForm.elements.notes.value = item.notes || "";
@@ -296,6 +310,7 @@ editForm.addEventListener("submit", (event) => {
     code: formData.get("code")?.toString().trim() || "",
     description: formData.get("description")?.toString().trim() || "",
     carton: formData.get("carton")?.toString().trim() || "",
+    cartonSize: formData.get("cartonSize")?.toString().trim() || "",
     single: formData.get("single")?.toString().trim() || "",
     date: formData.get("date")?.toString().trim() || "",
     notes: formData.get("notes")?.toString().trim() || "",
@@ -324,7 +339,7 @@ sheetTitleInput.addEventListener("input", () => {
 });
 
 exportCsvButton.addEventListener("click", () => {
-  const header = ["Coordinate", "Code", "Description", "Carton", "Single", "Date", "Notes"];
+  const header = ["Coordinate", "Code", "Description", "Carton", "Carton Size", "Single", "Total Units", "Date", "Notes"];
   const lines = [header.join(",")];
 
   inventoryItems.forEach((item) => {
@@ -333,7 +348,9 @@ exportCsvButton.addEventListener("click", () => {
       escapeCsv(item.code),
       escapeCsv(item.description),
       escapeCsv(item.carton),
+      escapeCsv(item.cartonSize),
       escapeCsv(item.single),
+      escapeCsv(calculateItemTotal(item)),
       escapeCsv(item.date),
       escapeCsv(item.notes),
     ].join(","));
@@ -368,8 +385,14 @@ csvFileInput.addEventListener("change", async () => {
 
   inventoryItems.length = 0;
   for (let index = 1; index < rows.length; index += 1) {
-    const [coordinate = "", code = "", description = "", carton = "", single = "", date = "", notes = ""] = parseCsvLine(rows[index]);
-    inventoryItems.push({ coordinate, code, description, carton, single, date, notes });
+    const columns = parseCsvLine(rows[index]);
+    const [coordinate = "", code = "", description = "", carton = "", cartonSize = "", single = "", maybeTotalOrDate = "", maybeDateOrNotes = "", maybeNotes = ""] = columns;
+
+    const hasTotalColumn = columns.length >= 9;
+    const date = hasTotalColumn ? maybeDateOrNotes : maybeTotalOrDate;
+    const notes = hasTotalColumn ? maybeNotes : maybeDateOrNotes;
+
+    inventoryItems.push({ coordinate, code, description, carton, cartonSize, single, date, notes });
   }
 
   if (currentEditCoordinate) {
