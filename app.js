@@ -15,10 +15,13 @@ const viewCoordinateLabel = document.getElementById("view-coordinate");
 const editItemsList = document.getElementById("edit-items-list");
 const viewItemsList = document.getElementById("view-items-list");
 const editForm = document.getElementById("edit-form");
+const saveItemButton = document.getElementById("save-item");
+const cancelItemEditButton = document.getElementById("cancel-item-edit");
 const closeEditButton = document.getElementById("close-edit");
 const closeViewButton = document.getElementById("close-view");
 
 let currentEditCoordinate = null;
+let editingItemIndex = null;
 const inventoryItems = [];
 
 function toCoordinate(x, y) {
@@ -68,10 +71,12 @@ function parseCsvLine(line) {
 }
 
 function getItemsByCoordinate(coordinate) {
-  return inventoryItems.filter((item) => item.coordinate === coordinate);
+  return inventoryItems
+    .map((item, index) => ({ ...item, index }))
+    .filter((item) => item.coordinate === coordinate);
 }
 
-function renderItemsList(target, coordinate) {
+function renderItemsList(target, coordinate, forEdit = false) {
   const items = getItemsByCoordinate(coordinate);
 
   if (items.length === 0) {
@@ -89,10 +94,35 @@ function renderItemsList(target, coordinate) {
         <strong>Single:</strong> ${item.single || "-"}<br />
         <strong>Date:</strong> ${item.date || "-"}<br />
         <strong>Notes:</strong> ${item.notes || "-"}
+        ${forEdit ? `<div class="item-row-actions"><button type="button" class="edit-existing-item" data-item-index="${item.index}">Edit Item</button></div>` : ""}
       </div>
     `,
     )
     .join("");
+}
+
+function resetEditState() {
+  editingItemIndex = null;
+  saveItemButton.textContent = "Add Item";
+  cancelItemEditButton.classList.add("hidden");
+  editForm.reset();
+}
+
+function startEditItem(itemIndex) {
+  const item = inventoryItems[itemIndex];
+  if (!item) {
+    return;
+  }
+
+  editingItemIndex = itemIndex;
+  saveItemButton.textContent = "Update Item";
+  cancelItemEditButton.classList.remove("hidden");
+
+  editForm.elements.code.value = item.code || "";
+  editForm.elements.carton.value = item.carton || "";
+  editForm.elements.single.value = item.single || "";
+  editForm.elements.date.value = item.date || "";
+  editForm.elements.notes.value = item.notes || "";
 }
 
 function openModal(modal) {
@@ -104,6 +134,7 @@ function closeModals() {
   modalBackdrop.classList.add("hidden");
   editModal.classList.add("hidden");
   viewModal.classList.add("hidden");
+  resetEditState();
 }
 
 function setCellMode(cell, lockButton, inactive) {
@@ -164,7 +195,8 @@ function createCell(x, y) {
     event.stopPropagation();
     currentEditCoordinate = coordinate;
     editCoordinateLabel.textContent = coordinate;
-    renderItemsList(editItemsList, coordinate);
+    renderItemsList(editItemsList, coordinate, true);
+    resetEditState();
     openModal(editModal);
   });
 
@@ -199,6 +231,20 @@ function createCell(x, y) {
   return cell;
 }
 
+editItemsList.addEventListener("click", (event) => {
+  const button = event.target.closest(".edit-existing-item");
+  if (!button) {
+    return;
+  }
+
+  const itemIndex = Number(button.dataset.itemIndex);
+  startEditItem(itemIndex);
+});
+
+cancelItemEditButton.addEventListener("click", () => {
+  resetEditState();
+});
+
 editForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -207,17 +253,23 @@ editForm.addEventListener("submit", (event) => {
   }
 
   const formData = new FormData(editForm);
-  inventoryItems.push({
+  const nextItem = {
     coordinate: currentEditCoordinate,
     code: formData.get("code")?.toString().trim() || "",
     carton: formData.get("carton")?.toString().trim() || "",
     single: formData.get("single")?.toString().trim() || "",
     date: formData.get("date")?.toString().trim() || "",
     notes: formData.get("notes")?.toString().trim() || "",
-  });
+  };
 
-  editForm.reset();
-  renderItemsList(editItemsList, currentEditCoordinate);
+  if (editingItemIndex !== null && inventoryItems[editingItemIndex]) {
+    inventoryItems[editingItemIndex] = nextItem;
+  } else {
+    inventoryItems.push(nextItem);
+  }
+
+  renderItemsList(editItemsList, currentEditCoordinate, true);
+  resetEditState();
 });
 
 closeEditButton.addEventListener("click", closeModals);
@@ -276,7 +328,7 @@ csvFileInput.addEventListener("change", async () => {
   }
 
   if (currentEditCoordinate) {
-    renderItemsList(editItemsList, currentEditCoordinate);
+    renderItemsList(editItemsList, currentEditCoordinate, true);
   }
 
   csvFileInput.value = "";

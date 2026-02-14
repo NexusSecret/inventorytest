@@ -205,3 +205,17 @@ h1 {
   margin-bottom: 8px;
   background: #f9fbff;
 }
+
+
+.item-row-actions {
+  margin-top: 8px;
+}
+
+.item-row-actions button {
+  border: 1px solid #b8c5da;
+  border-radius: 5px;
+  background: #fff;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  cursor: pointer;
+}
