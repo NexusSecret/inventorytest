@@ -34,8 +34,22 @@ h1 {
 
 .app-controls {
   display: flex;
+  align-items: end;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+
+.sheet-title-label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.sheet-title-label input {
+  min-width: 220px;
+  padding: 6px;
 }
 
 .inventory-grid {

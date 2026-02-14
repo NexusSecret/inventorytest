@@ -10,11 +10,14 @@
     <main class="app">
       <h1>Inventory Management Grid</h1>
       <p class="legend">
-        Coordinates run from <strong>X000</strong> at the bottom-left to
-        <strong>X1105</strong> at the top-right.
+        Coordinates run from the bottom-left to the top-right and use the first letter of the spreadsheet title.
       </p>
 
       <section class="app-controls" aria-label="Inventory import/export controls">
+        <label class="sheet-title-label">
+          Spreadsheet title
+          <input id="sheet-title" type="text" value="Inventory" />
+        </label>
         <button id="export-csv" type="button">Export CSV</button>
         <button id="import-csv" type="button">Import CSV</button>
         <input id="csv-file-input" type="file" accept=".csv,text/csv" hidden />
@@ -29,6 +32,7 @@
         <p id="edit-coordinate" class="modal-coordinate"></p>
         <form id="edit-form" class="edit-form">
           <label>Code <input name="code" required /></label>
+          <label>Description <input name="description" /></label>
           <label>Carton <input name="carton" /></label>
           <label>Single <input name="single" /></label>
           <label>Date <input type="date" name="date" /></label>

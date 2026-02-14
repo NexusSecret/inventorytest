@@ -1,11 +1,11 @@
 const MAX_X = 11;
 const MAX_Y = 5;
-const PLACEHOLDER = "X";
 
 const grid = document.getElementById("inventory-grid");
 const exportCsvButton = document.getElementById("export-csv");
 const importCsvButton = document.getElementById("import-csv");
 const csvFileInput = document.getElementById("csv-file-input");
+const sheetTitleInput = document.getElementById("sheet-title");
 
 const modalBackdrop = document.getElementById("modal-backdrop");
 const editModal = document.getElementById("edit-modal");
@@ -22,10 +22,47 @@ const closeViewButton = document.getElementById("close-view");
 
 let currentEditCoordinate = null;
 let editingItemIndex = null;
+let coordinatePrefix = "I";
 const inventoryItems = [];
 
+function getCoordinatePrefix() {
+  const trimmed = sheetTitleInput.value.trim();
+  return (trimmed[0] || "X").toUpperCase();
+}
+
 function toCoordinate(x, y) {
-  return `${PLACEHOLDER}${String(x).padStart(2, "0")}${String(y).padStart(2, "0")}`;
+  return `${coordinatePrefix}${String(x).padStart(2, "0")}${String(y).padStart(2, "0")}`;
+}
+
+function updateGridCoordinates() {
+  coordinatePrefix = getCoordinatePrefix();
+
+  const cells = grid.querySelectorAll(".grid-cell");
+  cells.forEach((cell) => {
+    const x = Number(cell.dataset.x);
+    const y = Number(cell.dataset.y);
+    const nextCoordinate = toCoordinate(x, y);
+    const previousCoordinate = cell.dataset.coordinate;
+
+    cell.dataset.coordinate = nextCoordinate;
+    cell.setAttribute("aria-label", `Inventory slot ${nextCoordinate}`);
+    cell.querySelector(".cell-coordinate").textContent = nextCoordinate;
+
+    inventoryItems.forEach((item) => {
+      if (item.coordinate === previousCoordinate) {
+        item.coordinate = nextCoordinate;
+      }
+    });
+  });
+
+  if (currentEditCoordinate) {
+    const editCell = grid.querySelector(`.grid-cell[data-coordinate="${currentEditCoordinate}"]`);
+    if (editCell) {
+      currentEditCoordinate = editCell.dataset.coordinate;
+      editCoordinateLabel.textContent = currentEditCoordinate;
+      renderItemsList(editItemsList, currentEditCoordinate, true);
+    }
+  }
 }
 
 function escapeCsv(value) {
@@ -90,6 +127,7 @@ function renderItemsList(target, coordinate, forEdit = false) {
       <div class="item-row">
         <strong>Item ${idx + 1}</strong><br />
         <strong>Code:</strong> ${item.code || "-"}<br />
+        <strong>Description:</strong> ${item.description || "-"}<br />
         <strong>Carton:</strong> ${item.carton || "-"}<br />
         <strong>Single:</strong> ${item.single || "-"}<br />
         <strong>Date:</strong> ${item.date || "-"}<br />
@@ -119,6 +157,7 @@ function startEditItem(itemIndex) {
   cancelItemEditButton.classList.remove("hidden");
 
   editForm.elements.code.value = item.code || "";
+  editForm.elements.description.value = item.description || "";
   editForm.elements.carton.value = item.carton || "";
   editForm.elements.single.value = item.single || "";
   editForm.elements.date.value = item.date || "";
@@ -159,6 +198,8 @@ function createCell(x, y) {
 
   const cell = document.createElement("div");
   cell.className = "grid-cell";
+  cell.dataset.x = String(x);
+  cell.dataset.y = String(y);
   cell.dataset.coordinate = coordinate;
   cell.setAttribute("tabindex", "0");
   cell.setAttribute("aria-label", `Inventory slot ${coordinate}`);
@@ -186,16 +227,16 @@ function createCell(x, y) {
 
   viewButton.addEventListener("click", (event) => {
     event.stopPropagation();
-    viewCoordinateLabel.textContent = coordinate;
-    renderItemsList(viewItemsList, coordinate);
+    viewCoordinateLabel.textContent = cell.dataset.coordinate;
+    renderItemsList(viewItemsList, cell.dataset.coordinate);
     openModal(viewModal);
   });
 
   editButton.addEventListener("click", (event) => {
     event.stopPropagation();
-    currentEditCoordinate = coordinate;
-    editCoordinateLabel.textContent = coordinate;
-    renderItemsList(editItemsList, coordinate, true);
+    currentEditCoordinate = cell.dataset.coordinate;
+    editCoordinateLabel.textContent = currentEditCoordinate;
+    renderItemsList(editItemsList, currentEditCoordinate, true);
     resetEditState();
     openModal(editModal);
   });
@@ -221,13 +262,11 @@ function createCell(x, y) {
 
   buttonWrap.appendChild(viewButton);
   buttonWrap.appendChild(editButton);
-
   cell.appendChild(label);
   cell.appendChild(lockButton);
   cell.appendChild(buttonWrap);
 
   setCellMode(cell, lockButton, false);
-
   return cell;
 }
 
@@ -237,8 +276,7 @@ editItemsList.addEventListener("click", (event) => {
     return;
   }
 
-  const itemIndex = Number(button.dataset.itemIndex);
-  startEditItem(itemIndex);
+  startEditItem(Number(button.dataset.itemIndex));
 });
 
 cancelItemEditButton.addEventListener("click", () => {
@@ -256,6 +294,7 @@ editForm.addEventListener("submit", (event) => {
   const nextItem = {
     coordinate: currentEditCoordinate,
     code: formData.get("code")?.toString().trim() || "",
+    description: formData.get("description")?.toString().trim() || "",
     carton: formData.get("carton")?.toString().trim() || "",
     single: formData.get("single")?.toString().trim() || "",
     date: formData.get("date")?.toString().trim() || "",
@@ -280,14 +319,19 @@ modalBackdrop.addEventListener("click", (event) => {
   }
 });
 
+sheetTitleInput.addEventListener("input", () => {
+  updateGridCoordinates();
+});
+
 exportCsvButton.addEventListener("click", () => {
-  const header = ["Coordinate", "Code", "Carton", "Single", "Date", "Notes"];
+  const header = ["Coordinate", "Code", "Description", "Carton", "Single", "Date", "Notes"];
   const lines = [header.join(",")];
 
   inventoryItems.forEach((item) => {
     lines.push([
       escapeCsv(item.coordinate),
       escapeCsv(item.code),
+      escapeCsv(item.description),
       escapeCsv(item.carton),
       escapeCsv(item.single),
       escapeCsv(item.date),
@@ -299,7 +343,9 @@ exportCsvButton.addEventListener("click", () => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "inventory-items.csv";
+
+  const filenameTitle = sheetTitleInput.value.trim() || "inventory";
+  link.download = `${filenameTitle.replace(/\s+/g, "-").toLowerCase()}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 });
@@ -321,10 +367,9 @@ csvFileInput.addEventListener("change", async () => {
   }
 
   inventoryItems.length = 0;
-
   for (let index = 1; index < rows.length; index += 1) {
-    const [coordinate = "", code = "", carton = "", single = "", date = "", notes = ""] = parseCsvLine(rows[index]);
-    inventoryItems.push({ coordinate, code, carton, single, date, notes });
+    const [coordinate = "", code = "", description = "", carton = "", single = "", date = "", notes = ""] = parseCsvLine(rows[index]);
+    inventoryItems.push({ coordinate, code, description, carton, single, date, notes });
   }
 
   if (currentEditCoordinate) {
@@ -334,6 +379,7 @@ csvFileInput.addEventListener("change", async () => {
   csvFileInput.value = "";
 });
 
+coordinatePrefix = getCoordinatePrefix();
 for (let y = MAX_Y; y >= 0; y -= 1) {
   for (let x = 0; x <= MAX_X; x += 1) {
     grid.appendChild(createCell(x, y));
