@@ -14,7 +14,7 @@ Then open:
 
 - `http://127.0.0.1:4173`
 
-> Avoid opening `index.html` directly with `file://...` in browsers that restrict local script/style loading.
+> If hosting on S3/static hosting, make sure `index.html`, `app.js`, and `styles.css` are uploaded at the same path level and served with standard web MIME types (`text/html`, `application/javascript`, `text/css`).
 
 ## Files
 
