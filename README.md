@@ -1,35 +1,50 @@
 # Inventory Management system
 
-If your app works on **Windows/Chromium** but JS/CSS fail on **Linux, iOS, or AWS**, the issue is usually one of these:
+This repository now includes a simple aisle-aware inventory data model that supports:
 
-1. **Windows-only paths in HTML**
-   - ❌ `src="assets\app.js"`
-   - ✅ `src="assets/app.js"`
-2. **Case sensitivity mismatch** (Linux/iOS are case-sensitive)
-   - ❌ `href="Css/style.css"` when file is `css/style.css`
-3. **Opening HTML via `file://` instead of serving via HTTP**
-   - Browsers enforce different security/path behavior for local files.
-4. **Incorrect static file routing in production**
-   - On AWS, app servers/load balancers must route `/css`, `/js`, `/images` correctly.
+- Multiple aisles (for example `Widgets` with prefix `W`, and `Gadgets` with prefix `G`)
+- Aisle-specific coordinates (`W1`, `W2`, `G1`, `G2`, ...)
+- Exporting **all aisles to one CSV file**
+- Importing that same CSV file back into the system
 
-## Quick checker
+## Data model
 
-Run this validator to catch broken static references:
+- `InventorySystem` is the top-level container.
+- `Aisle` is the container for cells and owns a coordinate prefix.
+- `Cell` stores `coordinate`, `item`, and `quantity`.
 
-```bash
-python3 tools/check_static_assets.py .
+## Example usage
+
+```python
+from inventory import InventorySystem
+
+system = InventorySystem()
+system.add_aisle("Widgets", "W")
+system.add_aisle("Gadgets", "G")
+
+system.set_cell("Widgets", "1", "Widget Screw", 12)   # stored as W1
+system.set_cell("Gadgets", "G2", "Gadget Spring", 8)  # stored as G2
+
+system.export_csv("inventory.csv")
+
+loaded = InventorySystem()
+loaded.import_csv("inventory.csv")
 ```
 
-It checks HTML `src`/`href` references for:
-- Windows backslashes (`\\`)
-- Missing files
-- File-name case mismatches
+## CSV format
 
-## Deployment notes
+The export/import schema is:
 
-- Keep all static references URL-style (`/` separators), never OS path style.
-- Ensure your web server is serving static files with correct MIME types:
-  - `.css` → `text/css`
-  - `.js` → `application/javascript` (or `text/javascript`)
-- If using a backend framework, configure static root/public directory and use framework helpers for static URLs.
+- `aisle`
+- `prefix`
+- `coordinate`
+- `item`
+- `quantity`
 
+All aisles are saved into the same CSV file.
+
+## Tests
+
+```bash
+python3 -m unittest discover -s tests -p "test_*.py"
+```
