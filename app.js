@@ -5,7 +5,8 @@ const grid = document.getElementById("inventory-grid");
 const exportCsvButton = document.getElementById("export-csv");
 const importCsvButton = document.getElementById("import-csv");
 const csvFileInput = document.getElementById("csv-file-input");
-const sheetTitleInput = document.getElementById("sheet-title");
+const aisleSelect = document.getElementById("aisle-select");
+const newAisleButton = document.getElementById("new-aisle");
 
 const modalBackdrop = document.getElementById("modal-backdrop");
 const editModal = document.getElementById("edit-modal");
@@ -22,16 +23,27 @@ const closeViewButton = document.getElementById("close-view");
 
 let currentEditCoordinate = null;
 let editingItemIndex = null;
-let coordinatePrefix = "I";
+let currentAisleId = "default";
+const aisles = [{ id: "default", name: "Inventory" }];
+const cellModes = new Map();
 const inventoryItems = [];
 
-function getCoordinatePrefix() {
-  const trimmed = sheetTitleInput.value.trim();
-  return (trimmed[0] || "X").toUpperCase();
+function coordinatePrefix() {
+  const aisle = aisles.find((entry) => entry.id === currentAisleId);
+  const source = aisle?.name?.trim() || "X";
+  return source[0].toUpperCase();
 }
 
 function toCoordinate(x, y) {
-  return `${coordinatePrefix}${String(x).padStart(2, "0")}${String(y).padStart(2, "0")}`;
+  return `${coordinatePrefix()}${String(x).padStart(2, "0")}${String(y).padStart(2, "0")}`;
+}
+
+function getCellMode(aisleId, x, y) {
+  return cellModes.get(`${aisleId}:${x}:${y}`) || "active";
+}
+
+function setCellModeValue(aisleId, x, y, mode) {
+  cellModes.set(`${aisleId}:${x}:${y}`, mode);
 }
 
 function toNumber(value) {
@@ -43,43 +55,11 @@ function calculateItemTotal(item) {
   return toNumber(item.carton) * toNumber(item.cartonSize) + toNumber(item.single);
 }
 
-function updateGridCoordinates() {
-  coordinatePrefix = getCoordinatePrefix();
-
-  const cells = grid.querySelectorAll(".grid-cell");
-  cells.forEach((cell) => {
-    const x = Number(cell.dataset.x);
-    const y = Number(cell.dataset.y);
-    const nextCoordinate = toCoordinate(x, y);
-    const previousCoordinate = cell.dataset.coordinate;
-
-    cell.dataset.coordinate = nextCoordinate;
-    cell.setAttribute("aria-label", `Inventory slot ${nextCoordinate}`);
-    cell.querySelector(".cell-coordinate").textContent = nextCoordinate;
-
-    inventoryItems.forEach((item) => {
-      if (item.coordinate === previousCoordinate) {
-        item.coordinate = nextCoordinate;
-      }
-    });
-  });
-
-  if (currentEditCoordinate) {
-    const editCell = grid.querySelector(`.grid-cell[data-coordinate="${currentEditCoordinate}"]`);
-    if (editCell) {
-      currentEditCoordinate = editCell.dataset.coordinate;
-      editCoordinateLabel.textContent = currentEditCoordinate;
-      renderItemsList(editItemsList, currentEditCoordinate, true);
-    }
-  }
-}
-
 function escapeCsv(value) {
   const raw = String(value ?? "");
   if (raw.includes(",") || raw.includes("\n") || raw.includes('"')) {
     return `"${raw.replace(/"/g, '""')}"`;
   }
-
   return raw;
 }
 
@@ -97,29 +77,38 @@ function parseCsvLine(line) {
       index += 1;
       continue;
     }
-
     if (char === '"') {
       inQuotes = !inQuotes;
       continue;
     }
-
     if (char === "," && !inQuotes) {
       cells.push(current);
       current = "";
       continue;
     }
-
     current += char;
   }
-
   cells.push(current);
   return cells;
+}
+
+function ensureAisleByName(name) {
+  const existing = aisles.find((aisle) => aisle.name === name);
+  if (existing) {
+    return existing;
+  }
+
+  const id = `aisle-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const next = { id, name };
+  aisles.push(next);
+  renderAisleSelect();
+  return next;
 }
 
 function getItemsByCoordinate(coordinate) {
   return inventoryItems
     .map((item, index) => ({ ...item, index }))
-    .filter((item) => item.coordinate === coordinate);
+    .filter((item) => item.aisleId === currentAisleId && item.coordinate === coordinate);
 }
 
 function renderItemsList(target, coordinate, forEdit = false) {
@@ -131,10 +120,10 @@ function renderItemsList(target, coordinate, forEdit = false) {
   }
 
   const slotTotal = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
-
-  target.innerHTML = items
-    .map(
-      (item, idx) => `
+  target.innerHTML =
+    items
+      .map(
+        (item, idx) => `
       <div class="item-row">
         <strong>Item ${idx + 1}</strong><br />
         <strong>Code:</strong> ${item.code || "-"}<br />
@@ -148,8 +137,8 @@ function renderItemsList(target, coordinate, forEdit = false) {
         ${forEdit ? `<div class="item-row-actions"><button type="button" class="edit-existing-item" data-item-index="${item.index}">Edit Item</button></div>` : ""}
       </div>
     `,
-    )
-    .join("") + `<p><strong>Slot Total Units:</strong> ${slotTotal}</p>`;
+      )
+      .join("") + `<p><strong>Slot Total Units:</strong> ${slotTotal}</p>`;
 }
 
 function resetEditState() {
@@ -172,8 +161,8 @@ function startEditItem(itemIndex) {
   editForm.elements.code.value = item.code || "";
   editForm.elements.description.value = item.description || "";
   editForm.elements.carton.value = item.carton || "";
-  editForm.elements.cartonSize.value = item.cartonSize || "";
   editForm.elements.single.value = item.single || "";
+  editForm.elements.cartonSize.value = item.cartonSize || "";
   editForm.elements.date.value = item.date || "";
   editForm.elements.notes.value = item.notes || "";
 }
@@ -190,7 +179,7 @@ function closeModals() {
   resetEditState();
 }
 
-function setCellMode(cell, lockButton, inactive) {
+function setCellVisualMode(cell, lockButton, inactive) {
   const actionButtons = cell.querySelectorAll(".cell-action");
 
   cell.dataset.mode = inactive ? "inactive" : "active";
@@ -199,8 +188,6 @@ function setCellMode(cell, lockButton, inactive) {
 
   lockButton.classList.toggle("is-locked", inactive);
   lockButton.textContent = inactive ? "🔒" : "🔓";
-  lockButton.title = inactive ? "Unlock cell" : "Lock cell";
-  lockButton.setAttribute("aria-label", inactive ? "Unlock cell" : "Lock cell");
 
   actionButtons.forEach((button) => {
     button.disabled = inactive;
@@ -258,16 +245,13 @@ function createCell(x, y) {
   lockButton.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    const currentlyInactive = cell.dataset.mode === "inactive";
-    setCellMode(cell, lockButton, !currentlyInactive);
+    const nextInactive = cell.dataset.mode !== "inactive";
+    setCellModeValue(currentAisleId, x, y, nextInactive ? "inactive" : "active");
+    setCellVisualMode(cell, lockButton, nextInactive);
   });
 
   cell.addEventListener("click", (event) => {
-    if (event.target.closest("button")) {
-      return;
-    }
-
-    if (cell.dataset.mode === "inactive") {
+    if (event.target.closest("button") || cell.dataset.mode === "inactive") {
       return;
     }
 
@@ -276,12 +260,29 @@ function createCell(x, y) {
 
   buttonWrap.appendChild(viewButton);
   buttonWrap.appendChild(editButton);
+
   cell.appendChild(label);
   cell.appendChild(lockButton);
   cell.appendChild(buttonWrap);
 
-  setCellMode(cell, lockButton, false);
+  setCellVisualMode(cell, lockButton, getCellMode(currentAisleId, x, y) === "inactive");
   return cell;
+}
+
+function renderGrid() {
+  grid.innerHTML = "";
+  closeModals();
+
+  for (let y = MAX_Y; y >= 0; y -= 1) {
+    for (let x = 0; x <= MAX_X; x += 1) {
+      grid.appendChild(createCell(x, y));
+    }
+  }
+}
+
+function renderAisleSelect() {
+  aisleSelect.innerHTML = aisles.map((aisle) => `<option value="${aisle.id}">${aisle.name}</option>`).join("");
+  aisleSelect.value = currentAisleId;
 }
 
 editItemsList.addEventListener("click", (event) => {
@@ -306,6 +307,7 @@ editForm.addEventListener("submit", (event) => {
 
   const formData = new FormData(editForm);
   const nextItem = {
+    aisleId: currentAisleId,
     coordinate: currentEditCoordinate,
     code: formData.get("code")?.toString().trim() || "",
     description: formData.get("description")?.toString().trim() || "",
@@ -334,16 +336,31 @@ modalBackdrop.addEventListener("click", (event) => {
   }
 });
 
-sheetTitleInput.addEventListener("input", () => {
-  updateGridCoordinates();
+newAisleButton.addEventListener("click", () => {
+  const name = window.prompt("Enter new aisle name:", "Aisle 2")?.trim();
+  if (!name) {
+    return;
+  }
+
+  const aisle = ensureAisleByName(name);
+  currentAisleId = aisle.id;
+  renderAisleSelect();
+  renderGrid();
+});
+
+aisleSelect.addEventListener("change", () => {
+  currentAisleId = aisleSelect.value;
+  renderGrid();
 });
 
 exportCsvButton.addEventListener("click", () => {
-  const header = ["Coordinate", "Code", "Description", "Carton", "Carton Size", "Single", "Total Units", "Date", "Notes"];
+  const header = ["Aisle", "Coordinate", "Code", "Description", "Carton", "Carton Size", "Single", "Total Units", "Date", "Notes"];
   const lines = [header.join(",")];
 
   inventoryItems.forEach((item) => {
+    const aisleName = aisles.find((entry) => entry.id === item.aisleId)?.name || "";
     lines.push([
+      escapeCsv(aisleName),
       escapeCsv(item.coordinate),
       escapeCsv(item.code),
       escapeCsv(item.description),
@@ -360,9 +377,7 @@ exportCsvButton.addEventListener("click", () => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-
-  const filenameTitle = sheetTitleInput.value.trim() || "inventory";
-  link.download = `${filenameTitle.replace(/\s+/g, "-").toLowerCase()}.csv`;
+  link.download = "inventory-all-aisles.csv";
   link.click();
   URL.revokeObjectURL(url);
 });
@@ -384,27 +399,33 @@ csvFileInput.addEventListener("change", async () => {
   }
 
   inventoryItems.length = 0;
+
   for (let index = 1; index < rows.length; index += 1) {
     const columns = parseCsvLine(rows[index]);
-    const [coordinate = "", code = "", description = "", carton = "", cartonSize = "", single = "", maybeTotalOrDate = "", maybeDateOrNotes = "", maybeNotes = ""] = columns;
+    const [aisleName = "Inventory", coordinate = "", code = "", description = "", carton = "", cartonSize = "", single = "", maybeTotalOrDate = "", maybeDateOrNotes = "", maybeNotes = ""] = columns;
 
-    const hasTotalColumn = columns.length >= 9;
+    const aisle = ensureAisleByName(aisleName || "Inventory");
+    const hasTotalColumn = columns.length >= 10;
     const date = hasTotalColumn ? maybeDateOrNotes : maybeTotalOrDate;
     const notes = hasTotalColumn ? maybeNotes : maybeDateOrNotes;
 
-    inventoryItems.push({ coordinate, code, description, carton, cartonSize, single, date, notes });
+    inventoryItems.push({
+      aisleId: aisle.id,
+      coordinate,
+      code,
+      description,
+      carton,
+      cartonSize,
+      single,
+      date,
+      notes,
+    });
   }
 
-  if (currentEditCoordinate) {
-    renderItemsList(editItemsList, currentEditCoordinate, true);
-  }
-
+  renderAisleSelect();
+  renderGrid();
   csvFileInput.value = "";
 });
 
-coordinatePrefix = getCoordinatePrefix();
-for (let y = MAX_Y; y >= 0; y -= 1) {
-  for (let x = 0; x <= MAX_X; x += 1) {
-    grid.appendChild(createCell(x, y));
-  }
-}
+renderAisleSelect();
+renderGrid();
