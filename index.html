@@ -114,10 +114,12 @@ h1 {
 
 .cell-action {
   border: 1px solid #bdc7d7;
-  border-radius: 5px;
+  border-radius: 6px;
   background: #fff;
-  font-size: 0.75rem;
-  padding: 4px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 8px 0;
+  min-height: 40px;
   cursor: pointer;
 }
 
@@ -180,6 +182,27 @@ h1 {
   border-radius: 10px;
   padding: 16px;
   border: 1px solid #d3dcea;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-header h2 {
+  margin: 0;
+}
+
+.modal-close-top {
+  border: 1px solid #bcc8dc;
+  background: #fff;
+  border-radius: 6px;
+  width: 34px;
+  height: 34px;
+  font-size: 1.1rem;
+  cursor: pointer;
 }
 
 .hidden {
@@ -267,7 +290,7 @@ h1 {
 
     <div id="modal-backdrop" class="modal-backdrop hidden" aria-hidden="true">
       <div id="edit-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
-        <h2 id="edit-modal-title">Edit Slot</h2>
+        <div class="modal-header"><h2 id="edit-modal-title">Edit Slot</h2><button id="close-edit-top" class="modal-close-top" type="button" aria-label="Close edit dialog">×</button></div>
         <p id="edit-coordinate" class="modal-coordinate"></p>
         <form id="edit-form" class="edit-form">
           <label>Code <input name="code" required /></label>
@@ -287,7 +310,7 @@ h1 {
       </div>
 
       <div id="view-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="view-modal-title">
-        <h2 id="view-modal-title">View Slot</h2>
+        <div class="modal-header"><h2 id="view-modal-title">View Slot</h2><button id="close-view-top" class="modal-close-top" type="button" aria-label="Close view dialog">×</button></div>
         <p id="view-coordinate" class="modal-coordinate"></p>
         <div id="view-items-list" class="modal-list"></div>
         <div class="modal-actions">
@@ -319,6 +342,8 @@ const saveItemButton = document.getElementById("save-item");
 const cancelItemEditButton = document.getElementById("cancel-item-edit");
 const closeEditButton = document.getElementById("close-edit");
 const closeViewButton = document.getElementById("close-view");
+const closeEditTopButton = document.getElementById("close-edit-top");
+const closeViewTopButton = document.getElementById("close-view-top");
 
 let currentEditCoordinate = null;
 let editingItemIndex = null;
@@ -629,6 +654,8 @@ editForm.addEventListener("submit", (event) => {
 
 closeEditButton.addEventListener("click", closeModals);
 closeViewButton.addEventListener("click", closeModals);
+closeEditTopButton.addEventListener("click", closeModals);
+closeViewTopButton.addEventListener("click", closeModals);
 modalBackdrop.addEventListener("click", (event) => {
   if (event.target === modalBackdrop) {
     closeModals();

@@ -20,6 +20,8 @@ const saveItemButton = document.getElementById("save-item");
 const cancelItemEditButton = document.getElementById("cancel-item-edit");
 const closeEditButton = document.getElementById("close-edit");
 const closeViewButton = document.getElementById("close-view");
+const closeEditTopButton = document.getElementById("close-edit-top");
+const closeViewTopButton = document.getElementById("close-view-top");
 
 let currentEditCoordinate = null;
 let editingItemIndex = null;
@@ -330,6 +332,8 @@ editForm.addEventListener("submit", (event) => {
 
 closeEditButton.addEventListener("click", closeModals);
 closeViewButton.addEventListener("click", closeModals);
+closeEditTopButton.addEventListener("click", closeModals);
+closeViewTopButton.addEventListener("click", closeModals);
 modalBackdrop.addEventListener("click", (event) => {
   if (event.target === modalBackdrop) {
     closeModals();
