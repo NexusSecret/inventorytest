@@ -94,6 +94,19 @@ h1 {
   font-size: 0.85rem;
 }
 
+.cell-tag {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  color: #4b5f7a;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .cell-buttons {
   position: absolute;
   left: 8px;

@@ -1,10 +1,14 @@
 const MAX_X = 11;
 const MAX_Y = 5;
+const STORAGE_KEY = "inventory-grid-state-v1";
 
 const grid = document.getElementById("inventory-grid");
 const exportCsvButton = document.getElementById("export-csv");
 const importCsvButton = document.getElementById("import-csv");
 const csvFileInput = document.getElementById("csv-file-input");
+const exportJsonButton = document.getElementById("export-json");
+const importJsonButton = document.getElementById("import-json");
+const jsonFileInput = document.getElementById("json-file-input");
 const aisleSelect = document.getElementById("aisle-select");
 const newAisleButton = document.getElementById("new-aisle");
 
@@ -29,6 +33,7 @@ let editingItemIndex = null;
 let currentAisleId = "default";
 const aisles = [{ id: "default", name: "Inventory" }];
 const cellModes = new Map();
+const cellLabels = new Map();
 const inventoryItems = [];
 
 const numericFieldNames = ["carton", "single", "cartonSize"];
@@ -43,12 +48,38 @@ function toCoordinate(x, y) {
   return `${coordinatePrefix()}${String(x).padStart(2, "0")}${String(y).padStart(2, "0")}`;
 }
 
+function cellKey(aisleId, x, y) {
+  return `${aisleId}:${x}:${y}`;
+}
+
+function coordinateToXY(coordinate) {
+  const body = coordinate.slice(1);
+  return {
+    x: Number(body.slice(0, 2)),
+    y: Number(body.slice(2, 4)),
+  };
+}
+
 function getCellMode(aisleId, x, y) {
-  return cellModes.get(`${aisleId}:${x}:${y}`) || "active";
+  return cellModes.get(cellKey(aisleId, x, y)) || "active";
 }
 
 function setCellModeValue(aisleId, x, y, mode) {
-  cellModes.set(`${aisleId}:${x}:${y}`, mode);
+  cellModes.set(cellKey(aisleId, x, y), mode);
+}
+
+function getCellLabel(aisleId, x, y) {
+  return cellLabels.get(cellKey(aisleId, x, y)) || "";
+}
+
+function setCellLabel(aisleId, x, y, label) {
+  const key = cellKey(aisleId, x, y);
+  const cleaned = label.trim();
+  if (cleaned) {
+    cellLabels.set(key, cleaned);
+  } else {
+    cellLabels.delete(key);
+  }
 }
 
 function toNumber(value) {
@@ -96,7 +127,6 @@ function parseCsvLine(line) {
   cells.push(current);
   return cells;
 }
-
 
 function normalizeNumericInput(value) {
   return String(value ?? "").replace(/\D+/g, "");
@@ -232,6 +262,10 @@ function createCell(x, y) {
   label.className = "cell-coordinate";
   label.textContent = coordinate;
 
+  const cellTag = document.createElement("span");
+  cellTag.className = "cell-tag";
+  cellTag.textContent = getCellLabel(currentAisleId, x, y);
+
   const lockButton = document.createElement("button");
   lockButton.type = "button";
   lockButton.className = "lock-toggle";
@@ -260,8 +294,10 @@ function createCell(x, y) {
     event.stopPropagation();
     currentEditCoordinate = cell.dataset.coordinate;
     editCoordinateLabel.textContent = currentEditCoordinate;
+    editForm.elements.cellLabel.value = getCellLabel(currentAisleId, x, y);
     renderItemsList(editItemsList, currentEditCoordinate, true);
     resetEditState();
+    editForm.elements.cellLabel.value = getCellLabel(currentAisleId, x, y);
     openModal(editModal);
   });
 
@@ -271,13 +307,13 @@ function createCell(x, y) {
     const nextInactive = cell.dataset.mode !== "inactive";
     setCellModeValue(currentAisleId, x, y, nextInactive ? "inactive" : "active");
     setCellVisualMode(cell, lockButton, nextInactive);
+    saveState();
   });
 
   cell.addEventListener("click", (event) => {
     if (event.target.closest("button") || cell.dataset.mode === "inactive") {
       return;
     }
-
     cell.classList.toggle("is-selected");
   });
 
@@ -285,6 +321,7 @@ function createCell(x, y) {
   buttonWrap.appendChild(editButton);
 
   cell.appendChild(label);
+  cell.appendChild(cellTag);
   cell.appendChild(lockButton);
   cell.appendChild(buttonWrap);
 
@@ -308,6 +345,60 @@ function renderAisleSelect() {
   aisleSelect.value = currentAisleId;
 }
 
+function serializeState() {
+  return {
+    version: 1,
+    currentAisleId,
+    aisles: [...aisles],
+    inventoryItems: [...inventoryItems],
+    cellModes: Object.fromEntries(cellModes.entries()),
+    cellLabels: Object.fromEntries(cellLabels.entries()),
+  };
+}
+
+function applyState(state) {
+  if (!state || !Array.isArray(state.aisles) || !Array.isArray(state.inventoryItems)) {
+    return;
+  }
+
+  aisles.length = 0;
+  state.aisles.forEach((aisle) => aisles.push(aisle));
+
+  inventoryItems.length = 0;
+  state.inventoryItems.forEach((item) => inventoryItems.push(item));
+
+  cellModes.clear();
+  Object.entries(state.cellModes || {}).forEach(([key, value]) => cellModes.set(key, value));
+
+  cellLabels.clear();
+  Object.entries(state.cellLabels || {}).forEach(([key, value]) => cellLabels.set(key, value));
+
+  currentAisleId = aisles.some((aisle) => aisle.id === state.currentAisleId)
+    ? state.currentAisleId
+    : aisles[0]?.id || "default";
+
+  renderAisleSelect();
+  renderGrid();
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState()));
+}
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    applyState(parsed);
+  } catch {
+    // ignore bad local state
+  }
+}
+
 editItemsList.addEventListener("click", (event) => {
   const button = event.target.closest(".edit-existing-item");
   if (!button) {
@@ -319,6 +410,10 @@ editItemsList.addEventListener("click", (event) => {
 
 cancelItemEditButton.addEventListener("click", () => {
   resetEditState();
+  if (currentEditCoordinate) {
+    const { x, y } = coordinateToXY(currentEditCoordinate);
+    editForm.elements.cellLabel.value = getCellLabel(currentAisleId, x, y);
+  }
 });
 
 editForm.addEventListener("submit", (event) => {
@@ -327,6 +422,9 @@ editForm.addEventListener("submit", (event) => {
   if (!currentEditCoordinate) {
     return;
   }
+
+  const { x, y } = coordinateToXY(currentEditCoordinate);
+  setCellLabel(currentAisleId, x, y, editForm.elements.cellLabel.value || "");
 
   const formData = new FormData(editForm);
   const nextItem = {
@@ -347,10 +445,12 @@ editForm.addEventListener("submit", (event) => {
     inventoryItems.push(nextItem);
   }
 
+  renderGrid();
   renderItemsList(editItemsList, currentEditCoordinate, true);
   resetEditState();
+  editForm.elements.cellLabel.value = getCellLabel(currentAisleId, x, y);
+  saveState();
 });
-
 
 clearCellButton.addEventListener("click", () => {
   if (!currentEditCoordinate) {
@@ -372,6 +472,7 @@ clearCellButton.addEventListener("click", () => {
 
   renderItemsList(editItemsList, currentEditCoordinate, true);
   resetEditState();
+  saveState();
 });
 
 closeEditButton.addEventListener("click", closeModals);
@@ -394,11 +495,13 @@ newAisleButton.addEventListener("click", () => {
   currentAisleId = aisle.id;
   renderAisleSelect();
   renderGrid();
+  saveState();
 });
 
 aisleSelect.addEventListener("change", () => {
   currentAisleId = aisleSelect.value;
   renderGrid();
+  saveState();
 });
 
 exportCsvButton.addEventListener("click", () => {
@@ -473,8 +576,41 @@ csvFileInput.addEventListener("change", async () => {
   renderAisleSelect();
   renderGrid();
   csvFileInput.value = "";
+  saveState();
+});
+
+exportJsonButton.addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(serializeState(), null, 2)], { type: "application/json;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "inventory-state.json";
+  link.click();
+  URL.revokeObjectURL(url);
+});
+
+importJsonButton.addEventListener("click", () => {
+  jsonFileInput.click();
+});
+
+jsonFileInput.addEventListener("change", async () => {
+  const file = jsonFileInput.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(await file.text());
+    applyState(parsed);
+    saveState();
+  } catch {
+    window.alert("Invalid JSON state file.");
+  }
+
+  jsonFileInput.value = "";
 });
 
 attachNumericInputGuards();
 renderAisleSelect();
 renderGrid();
+loadState();
