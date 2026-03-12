@@ -18,6 +18,7 @@ const viewItemsList = document.getElementById("view-items-list");
 const editForm = document.getElementById("edit-form");
 const saveItemButton = document.getElementById("save-item");
 const cancelItemEditButton = document.getElementById("cancel-item-edit");
+const clearCellButton = document.getElementById("clear-cell");
 const closeEditButton = document.getElementById("close-edit");
 const closeViewButton = document.getElementById("close-view");
 const closeEditTopButton = document.getElementById("close-edit-top");
@@ -29,6 +30,8 @@ let currentAisleId = "default";
 const aisles = [{ id: "default", name: "Inventory" }];
 const cellModes = new Map();
 const inventoryItems = [];
+
+const numericFieldNames = ["carton", "single", "cartonSize"];
 
 function coordinatePrefix() {
   const aisle = aisles.find((entry) => entry.id === currentAisleId);
@@ -92,6 +95,24 @@ function parseCsvLine(line) {
   }
   cells.push(current);
   return cells;
+}
+
+
+function normalizeNumericInput(value) {
+  return String(value ?? "").replace(/\D+/g, "");
+}
+
+function attachNumericInputGuards() {
+  numericFieldNames.forEach((fieldName) => {
+    const input = editForm.elements[fieldName];
+    if (!input) {
+      return;
+    }
+
+    input.addEventListener("input", () => {
+      input.value = normalizeNumericInput(input.value);
+    });
+  });
 }
 
 function ensureAisleByName(name) {
@@ -313,9 +334,9 @@ editForm.addEventListener("submit", (event) => {
     coordinate: currentEditCoordinate,
     code: formData.get("code")?.toString().trim() || "",
     description: formData.get("description")?.toString().trim() || "",
-    carton: formData.get("carton")?.toString().trim() || "",
-    cartonSize: formData.get("cartonSize")?.toString().trim() || "",
-    single: formData.get("single")?.toString().trim() || "",
+    carton: normalizeNumericInput(formData.get("carton")?.toString().trim() || ""),
+    cartonSize: normalizeNumericInput(formData.get("cartonSize")?.toString().trim() || ""),
+    single: normalizeNumericInput(formData.get("single")?.toString().trim() || ""),
     date: formData.get("date")?.toString().trim() || "",
     notes: formData.get("notes")?.toString().trim() || "",
   };
@@ -324,6 +345,29 @@ editForm.addEventListener("submit", (event) => {
     inventoryItems[editingItemIndex] = nextItem;
   } else {
     inventoryItems.push(nextItem);
+  }
+
+  renderItemsList(editItemsList, currentEditCoordinate, true);
+  resetEditState();
+});
+
+
+clearCellButton.addEventListener("click", () => {
+  if (!currentEditCoordinate) {
+    return;
+  }
+
+  const aisleName = aisles.find((entry) => entry.id === currentAisleId)?.name || "this aisle";
+  const confirmed = window.confirm(`Clear all items in ${currentEditCoordinate} (${aisleName})?`);
+  if (!confirmed) {
+    return;
+  }
+
+  for (let index = inventoryItems.length - 1; index >= 0; index -= 1) {
+    const item = inventoryItems[index];
+    if (item.aisleId === currentAisleId && item.coordinate === currentEditCoordinate) {
+      inventoryItems.splice(index, 1);
+    }
   }
 
   renderItemsList(editItemsList, currentEditCoordinate, true);
@@ -431,5 +475,6 @@ csvFileInput.addEventListener("change", async () => {
   csvFileInput.value = "";
 });
 
+attachNumericInputGuards();
 renderAisleSelect();
 renderGrid();

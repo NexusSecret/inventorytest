@@ -308,14 +308,15 @@ h1 {
         <form id="edit-form" class="edit-form">
           <label>Code <input name="code" required /></label>
           <label>Description <input name="description" /></label>
-          <label>Carton <input name="carton" /></label>
-          <label>Single <input name="single" /></label>
-          <label>Carton Size <input name="cartonSize" /></label>
+          <label>Carton <input name="carton" type="number" min="0" step="1" inputmode="numeric" /></label>
+          <label>Single <input name="single" type="number" min="0" step="1" inputmode="numeric" /></label>
+          <label>Carton Size <input name="cartonSize" type="number" min="0" step="1" inputmode="numeric" /></label>
           <label>Date <input type="date" name="date" /></label>
           <label>Notes <textarea name="notes" rows="3"></textarea></label>
           <div class="modal-actions">
             <button type="submit" id="save-item">Add Item</button>
             <button type="button" id="cancel-item-edit" class="hidden">Cancel Edit</button>
+            <button type="button" id="clear-cell">Clear Cell</button>
             <button type="button" id="close-edit">Close</button>
           </div>
         </form>
@@ -353,6 +354,7 @@ const viewItemsList = document.getElementById("view-items-list");
 const editForm = document.getElementById("edit-form");
 const saveItemButton = document.getElementById("save-item");
 const cancelItemEditButton = document.getElementById("cancel-item-edit");
+const clearCellButton = document.getElementById("clear-cell");
 const closeEditButton = document.getElementById("close-edit");
 const closeViewButton = document.getElementById("close-view");
 const closeEditTopButton = document.getElementById("close-edit-top");
@@ -364,6 +366,8 @@ let currentAisleId = "default";
 const aisles = [{ id: "default", name: "Inventory" }];
 const cellModes = new Map();
 const inventoryItems = [];
+
+const numericFieldNames = ["carton", "single", "cartonSize"];
 
 function coordinatePrefix() {
   const aisle = aisles.find((entry) => entry.id === currentAisleId);
@@ -427,6 +431,24 @@ function parseCsvLine(line) {
   }
   cells.push(current);
   return cells;
+}
+
+
+function normalizeNumericInput(value) {
+  return String(value ?? "").replace(/\D+/g, "");
+}
+
+function attachNumericInputGuards() {
+  numericFieldNames.forEach((fieldName) => {
+    const input = editForm.elements[fieldName];
+    if (!input) {
+      return;
+    }
+
+    input.addEventListener("input", () => {
+      input.value = normalizeNumericInput(input.value);
+    });
+  });
 }
 
 function ensureAisleByName(name) {
@@ -648,9 +670,9 @@ editForm.addEventListener("submit", (event) => {
     coordinate: currentEditCoordinate,
     code: formData.get("code")?.toString().trim() || "",
     description: formData.get("description")?.toString().trim() || "",
-    carton: formData.get("carton")?.toString().trim() || "",
-    cartonSize: formData.get("cartonSize")?.toString().trim() || "",
-    single: formData.get("single")?.toString().trim() || "",
+    carton: normalizeNumericInput(formData.get("carton")?.toString().trim() || ""),
+    cartonSize: normalizeNumericInput(formData.get("cartonSize")?.toString().trim() || ""),
+    single: normalizeNumericInput(formData.get("single")?.toString().trim() || ""),
     date: formData.get("date")?.toString().trim() || "",
     notes: formData.get("notes")?.toString().trim() || "",
   };
@@ -659,6 +681,29 @@ editForm.addEventListener("submit", (event) => {
     inventoryItems[editingItemIndex] = nextItem;
   } else {
     inventoryItems.push(nextItem);
+  }
+
+  renderItemsList(editItemsList, currentEditCoordinate, true);
+  resetEditState();
+});
+
+
+clearCellButton.addEventListener("click", () => {
+  if (!currentEditCoordinate) {
+    return;
+  }
+
+  const aisleName = aisles.find((entry) => entry.id === currentAisleId)?.name || "this aisle";
+  const confirmed = window.confirm(`Clear all items in ${currentEditCoordinate} (${aisleName})?`);
+  if (!confirmed) {
+    return;
+  }
+
+  for (let index = inventoryItems.length - 1; index >= 0; index -= 1) {
+    const item = inventoryItems[index];
+    if (item.aisleId === currentAisleId && item.coordinate === currentEditCoordinate) {
+      inventoryItems.splice(index, 1);
+    }
   }
 
   renderItemsList(editItemsList, currentEditCoordinate, true);
@@ -766,6 +811,7 @@ csvFileInput.addEventListener("change", async () => {
   csvFileInput.value = "";
 });
 
+attachNumericInputGuards();
 renderAisleSelect();
 renderGrid();
 
