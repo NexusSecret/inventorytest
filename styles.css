@@ -97,12 +97,12 @@ h1 {
 
 .cell-tag {
   position: absolute;
-  top: 26px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 8px;
+  right: 8px;
+  bottom: 86px;
   font-size: 0.72rem;
   color: #4b5f7a;
-  max-width: 90px;
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -111,19 +111,19 @@ h1 {
 .cell-buttons {
   position: absolute;
   left: 8px;
-  right: 8px;
+  width: 78px;
   bottom: 8px;
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  gap: 3px;
 }
 
 .cell-label-prompt {
   position: absolute;
   left: 8px;
   right: 8px;
-  bottom: 102px;
+  bottom: 108px;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 6px;
@@ -152,12 +152,16 @@ h1 {
   border: 1px solid #bdc7d7;
   border-radius: 6px;
   background: #fff;
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   font-weight: 600;
-  padding: 4px 0;
-  min-height: 28px;
-  line-height: 1.1;
+  padding: 2px 6px;
+  min-height: 22px;
+  line-height: 1.05;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
 }
 
 .lock-toggle {

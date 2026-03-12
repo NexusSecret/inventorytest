@@ -302,17 +302,17 @@ function createCell(x, y) {
   const labelButton = document.createElement("button");
   labelButton.type = "button";
   labelButton.className = "cell-action";
-  labelButton.textContent = "Label";
+  labelButton.textContent = "🏷 Label";
 
   const viewButton = document.createElement("button");
   viewButton.type = "button";
   viewButton.className = "cell-action";
-  viewButton.textContent = "View";
+  viewButton.textContent = "👁 View";
 
   const editButton = document.createElement("button");
   editButton.type = "button";
   editButton.className = "cell-action";
-  editButton.textContent = "Edit";
+  editButton.textContent = "🔧 Edit";
 
   labelButton.addEventListener("click", (event) => {
     event.stopPropagation();
