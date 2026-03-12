@@ -55,7 +55,7 @@ h1 {
 
 .inventory-grid {
   display: grid;
-  grid-template-columns: repeat(12, var(--cell-size));
+  grid-template-columns: repeat(11, var(--cell-size));
   gap: var(--gap);
   background: var(--grid-bg);
   padding: 12px;

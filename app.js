@@ -1,5 +1,5 @@
-const MAX_X = 11;
-const MAX_Y = 5;
+const MAX_X = 10;
+const MAX_Y = 4;
 const STORAGE_KEY = "inventory-grid-state-v1";
 
 const grid = document.getElementById("inventory-grid");
