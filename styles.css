@@ -47,7 +47,8 @@ h1 {
   font-weight: 600;
 }
 
-.sheet-title-label input {
+.sheet-title-label input,
+.sheet-title-label select {
   min-width: 220px;
   padding: 6px;
 }
@@ -113,8 +114,37 @@ h1 {
   right: 8px;
   bottom: 8px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
+}
+
+.cell-label-prompt {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 54px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.cell-label-input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #b9c6da;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+}
+
+.cell-label-save {
+  border: 1px solid #b8c5da;
+  border-radius: 6px;
+  background: #fff;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .cell-action {

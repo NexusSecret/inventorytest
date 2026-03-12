@@ -234,6 +234,8 @@ function closeModals() {
 
 function setCellVisualMode(cell, lockButton, inactive) {
   const actionButtons = cell.querySelectorAll(".cell-action");
+  const labelInput = cell.querySelector(".cell-label-input");
+  const labelSaveButton = cell.querySelector(".cell-label-save");
 
   cell.dataset.mode = inactive ? "inactive" : "active";
   cell.classList.toggle("inactive", inactive);
@@ -245,6 +247,13 @@ function setCellVisualMode(cell, lockButton, inactive) {
   actionButtons.forEach((button) => {
     button.disabled = inactive;
   });
+
+  if (labelInput) {
+    labelInput.disabled = inactive;
+  }
+  if (labelSaveButton) {
+    labelSaveButton.disabled = inactive;
+  }
 }
 
 function createCell(x, y) {
@@ -270,8 +279,30 @@ function createCell(x, y) {
   lockButton.type = "button";
   lockButton.className = "lock-toggle";
 
+  const labelPrompt = document.createElement("div");
+  labelPrompt.className = "cell-label-prompt hidden";
+
+  const labelInput = document.createElement("input");
+  labelInput.type = "text";
+  labelInput.className = "cell-label-input";
+  labelInput.maxLength = 24;
+  labelInput.placeholder = "Cell label";
+
+  const labelSaveButton = document.createElement("button");
+  labelSaveButton.type = "button";
+  labelSaveButton.className = "cell-label-save";
+  labelSaveButton.textContent = "Save";
+
+  labelPrompt.appendChild(labelInput);
+  labelPrompt.appendChild(labelSaveButton);
+
   const buttonWrap = document.createElement("div");
   buttonWrap.className = "cell-buttons";
+
+  const labelButton = document.createElement("button");
+  labelButton.type = "button";
+  labelButton.className = "cell-action";
+  labelButton.textContent = "Label";
 
   const viewButton = document.createElement("button");
   viewButton.type = "button";
@@ -282,6 +313,31 @@ function createCell(x, y) {
   editButton.type = "button";
   editButton.className = "cell-action";
   editButton.textContent = "Edit";
+
+  labelButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    labelInput.value = getCellLabel(currentAisleId, x, y);
+    labelPrompt.classList.toggle("hidden");
+    if (!labelPrompt.classList.contains("hidden")) {
+      labelInput.focus();
+      labelInput.select();
+    }
+  });
+
+  labelSaveButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setCellLabel(currentAisleId, x, y, labelInput.value || "");
+    cellTag.textContent = getCellLabel(currentAisleId, x, y);
+    labelPrompt.classList.add("hidden");
+    saveState();
+  });
+
+  labelInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      labelSaveButton.click();
+    }
+  });
 
   viewButton.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -294,10 +350,8 @@ function createCell(x, y) {
     event.stopPropagation();
     currentEditCoordinate = cell.dataset.coordinate;
     editCoordinateLabel.textContent = currentEditCoordinate;
-    editForm.elements.cellLabel.value = getCellLabel(currentAisleId, x, y);
     renderItemsList(editItemsList, currentEditCoordinate, true);
     resetEditState();
-    editForm.elements.cellLabel.value = getCellLabel(currentAisleId, x, y);
     openModal(editModal);
   });
 
@@ -317,12 +371,14 @@ function createCell(x, y) {
     cell.classList.toggle("is-selected");
   });
 
+  buttonWrap.appendChild(labelButton);
   buttonWrap.appendChild(viewButton);
   buttonWrap.appendChild(editButton);
 
   cell.appendChild(label);
   cell.appendChild(cellTag);
   cell.appendChild(lockButton);
+  cell.appendChild(labelPrompt);
   cell.appendChild(buttonWrap);
 
   setCellVisualMode(cell, lockButton, getCellMode(currentAisleId, x, y) === "inactive");
@@ -412,7 +468,6 @@ cancelItemEditButton.addEventListener("click", () => {
   resetEditState();
   if (currentEditCoordinate) {
     const { x, y } = coordinateToXY(currentEditCoordinate);
-    editForm.elements.cellLabel.value = getCellLabel(currentAisleId, x, y);
   }
 });
 
@@ -422,9 +477,6 @@ editForm.addEventListener("submit", (event) => {
   if (!currentEditCoordinate) {
     return;
   }
-
-  const { x, y } = coordinateToXY(currentEditCoordinate);
-  setCellLabel(currentAisleId, x, y, editForm.elements.cellLabel.value || "");
 
   const formData = new FormData(editForm);
   const nextItem = {
@@ -448,7 +500,6 @@ editForm.addEventListener("submit", (event) => {
   renderGrid();
   renderItemsList(editItemsList, currentEditCoordinate, true);
   resetEditState();
-  editForm.elements.cellLabel.value = getCellLabel(currentAisleId, x, y);
   saveState();
 });
 
@@ -611,6 +662,6 @@ jsonFileInput.addEventListener("change", async () => {
 });
 
 attachNumericInputGuards();
+loadState();
 renderAisleSelect();
 renderGrid();
-loadState();
