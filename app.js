@@ -134,6 +134,10 @@ function parseCsvLine(line) {
   return cells;
 }
 
+function normalizeBarcode(value) {
+  return String(value ?? "").replace(/^"+|"+$/g, "").trim();
+}
+
 function findColumnIndex(header, candidates) {
   const normalizedHeader = header.map((entry) => entry.trim().toLowerCase());
   return normalizedHeader.findIndex((entry) => candidates.includes(entry));
@@ -159,7 +163,7 @@ function parseSourceCatalogCsv(text) {
 
   for (let index = 1; index < rows.length; index += 1) {
     const columns = parseCsvLine(rows[index]);
-    const barcode = (columns[barcodeIndex] || "").trim();
+    const barcode = normalizeBarcode(columns[barcodeIndex]);
     if (!barcode) {
       continue;
     }
@@ -601,14 +605,18 @@ modalBackdrop.addEventListener("click", (event) => {
   }
 });
 
-barcodeLookupButton.addEventListener("click", () => {
-  const barcode = editForm.elements.barcode.value?.trim() || "";
+barcodeLookupButton.addEventListener("click", async () => {
+  const barcode = normalizeBarcode(editForm.elements.barcode.value);
   if (!barcode) {
     window.alert("Enter a barcode first.");
     return;
   }
 
-  const match = sourceCatalogByBarcode.get(barcode);
+  let match = sourceCatalogByBarcode.get(barcode);
+  if (!match) {
+    await loadSourceCatalog();
+    match = sourceCatalogByBarcode.get(barcode);
+  }
   if (!match) {
     window.alert("Barcode not found in source.csv.");
     return;
