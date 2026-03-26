@@ -195,14 +195,18 @@ function parseSourceCatalogCsv(text) {
 }
 
 async function loadSourceCatalog() {
+  const sourcePaths = ["source.csv", "./source.csv", "/source.csv"];
   try {
-    const response = await fetch("source.csv", { cache: "no-store" });
-    if (!response.ok) {
-      return { loaded: false, count: 0 };
+    for (const sourcePath of sourcePaths) {
+      const response = await fetch(sourcePath, { cache: "no-store" });
+      if (!response.ok) {
+        continue;
+      }
+      const text = await response.text();
+      parseSourceCatalogCsv(text);
+      return { loaded: true, count: sourceCatalogByBarcode.size };
     }
-    const text = await response.text();
-    parseSourceCatalogCsv(text);
-    return { loaded: true, count: sourceCatalogByBarcode.size };
+    return { loaded: false, count: 0 };
   } catch {
     // source catalog is optional; ignore load errors
     return { loaded: false, count: 0 };
