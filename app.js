@@ -180,7 +180,6 @@ function renderItemsList(target, coordinate, forEdit = false) {
       <div class="item-row">
         <strong>Item ${idx + 1}</strong><br />
         <strong>Code:</strong> ${item.code || "-"}<br />
-        <strong>Barcode:</strong> ${item.barcode || "-"}<br />
         <strong>Description:</strong> ${item.description || "-"}<br />
         <strong>Carton:</strong> ${item.carton || "-"}<br />
         <strong>Carton Size:</strong> ${item.cartonSize || "-"}<br />
@@ -213,7 +212,6 @@ function startEditItem(itemIndex) {
   cancelItemEditButton.classList.remove("hidden");
 
   editForm.elements.code.value = item.code || "";
-  editForm.elements.barcode.value = item.barcode || "";
   editForm.elements.description.value = item.description || "";
   editForm.elements.carton.value = item.carton || "";
   editForm.elements.single.value = item.single || "";
@@ -485,7 +483,6 @@ editForm.addEventListener("submit", (event) => {
     aisleId: currentAisleId,
     coordinate: currentEditCoordinate,
     code: formData.get("code")?.toString().trim() || "",
-    barcode: formData.get("barcode")?.toString().trim() || "",
     description: formData.get("description")?.toString().trim() || "",
     carton: normalizeNumericInput(formData.get("carton")?.toString().trim() || ""),
     cartonSize: normalizeNumericInput(formData.get("cartonSize")?.toString().trim() || ""),
@@ -559,7 +556,7 @@ aisleSelect.addEventListener("change", () => {
 });
 
 exportCsvButton.addEventListener("click", () => {
-  const header = ["Aisle", "Coordinate", "Code", "Barcode", "Description", "Carton", "Carton Size", "Single", "Total Units", "Date", "Notes"];
+  const header = ["Aisle", "Coordinate", "Code", "Description", "Carton", "Carton Size", "Single", "Total Units", "Date", "Notes"];
   const lines = [header.join(",")];
 
   inventoryItems.forEach((item) => {
@@ -568,7 +565,6 @@ exportCsvButton.addEventListener("click", () => {
       escapeCsv(aisleName),
       escapeCsv(item.coordinate),
       escapeCsv(item.code),
-      escapeCsv(item.barcode),
       escapeCsv(item.description),
       escapeCsv(item.carton),
       escapeCsv(item.cartonSize),
@@ -608,23 +604,17 @@ csvFileInput.addEventListener("change", async () => {
 
   for (let index = 1; index < rows.length; index += 1) {
     const columns = parseCsvLine(rows[index]);
-    const [aisleName = "Inventory", coordinate = "", code = "", maybeBarcodeOrDescription = "", maybeDescriptionOrCarton = "", maybeCartonOrCartonSize = "", maybeCartonSizeOrSingle = "", maybeSingleOrTotal = "", maybeTotalOrDate = "", maybeDateOrNotes = "", maybeNotes = ""] = columns;
+    const [aisleName = "Inventory", coordinate = "", code = "", description = "", carton = "", cartonSize = "", single = "", maybeTotalOrDate = "", maybeDateOrNotes = "", maybeNotes = ""] = columns;
 
     const aisle = ensureAisleByName(aisleName || "Inventory");
-    const hasBarcodeColumn = columns.length >= 11;
-    const barcode = hasBarcodeColumn ? maybeBarcodeOrDescription : "";
-    const description = hasBarcodeColumn ? maybeDescriptionOrCarton : maybeBarcodeOrDescription;
-    const carton = hasBarcodeColumn ? maybeCartonOrCartonSize : maybeDescriptionOrCarton;
-    const cartonSize = hasBarcodeColumn ? maybeCartonSizeOrSingle : maybeCartonOrCartonSize;
-    const single = hasBarcodeColumn ? maybeSingleOrTotal : maybeCartonSizeOrSingle;
-    const date = hasBarcodeColumn ? maybeDateOrNotes : maybeTotalOrDate;
-    const notes = hasBarcodeColumn ? maybeNotes : maybeDateOrNotes;
+    const hasTotalColumn = columns.length >= 10;
+    const date = hasTotalColumn ? maybeDateOrNotes : maybeTotalOrDate;
+    const notes = hasTotalColumn ? maybeNotes : maybeDateOrNotes;
 
     inventoryItems.push({
       aisleId: aisle.id,
       coordinate,
       code,
-      barcode,
       description,
       carton,
       cartonSize,
