@@ -135,7 +135,24 @@ function parseCsvLine(line) {
 }
 
 function normalizeBarcode(value) {
-  return String(value ?? "").replace(/^"+|"+$/g, "").trim();
+  const raw = String(value ?? "").replace(/^"+|"+$/g, "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const compact = raw.replace(/[\s-]+/g, "");
+  if (/^\d+(\.0+)?$/.test(compact)) {
+    return compact.replace(/\.0+$/, "");
+  }
+
+  if (/^\d+(\.\d+)?e[+-]?\d+$/i.test(compact)) {
+    const expanded = Number(compact);
+    if (Number.isFinite(expanded) && Number.isInteger(expanded)) {
+      return String(expanded);
+    }
+  }
+
+  return compact;
 }
 
 function findColumnIndex(header, candidates) {
