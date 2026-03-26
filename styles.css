@@ -48,8 +48,16 @@ h1 {
   font-weight: 600;
 }
 
+.source-url-label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .sheet-title-label input,
-.sheet-title-label select {
+.sheet-title-label select,
+.source-url-label input {
   min-width: 220px;
   padding: 6px;
 }

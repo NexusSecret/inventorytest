@@ -1,13 +1,16 @@
 const MAX_X = 10;
 const MAX_Y = 4;
 const STORAGE_KEY = "inventory-grid-state-v1";
+const SOURCE_URL_KEY = "inventory-source-url";
 
 const grid = document.getElementById("inventory-grid");
 const exportCsvButton = document.getElementById("export-csv");
 const importCsvButton = document.getElementById("import-csv");
 const loadSourceCsvButton = document.getElementById("load-source-csv");
+const loadSourceUrlButton = document.getElementById("load-source-url");
 const csvFileInput = document.getElementById("csv-file-input");
 const sourceFileInput = document.getElementById("source-file-input");
+const sourceUrlInput = document.getElementById("source-url-input");
 const exportJsonButton = document.getElementById("export-json");
 const importJsonButton = document.getElementById("import-json");
 const jsonFileInput = document.getElementById("json-file-input");
@@ -207,7 +210,10 @@ function updateSourceStatus(loaded) {
 }
 
 async function loadSourceCatalog() {
-  const sourcePaths = ["source.csv", "./source.csv", "/source.csv"];
+  const configuredSourceUrl = sourceUrlInput?.value?.trim() || "";
+  const sourcePaths = configuredSourceUrl
+    ? [configuredSourceUrl]
+    : ["source.csv", "./source.csv", "/source.csv"];
   try {
     for (const sourcePath of sourcePaths) {
       const response = await fetch(sourcePath, { cache: "no-store" });
@@ -217,6 +223,9 @@ async function loadSourceCatalog() {
       const text = await response.text();
       parseSourceCatalogCsv(text);
       updateSourceStatus(true);
+      if (sourceUrlInput && sourcePath === configuredSourceUrl && configuredSourceUrl) {
+        localStorage.setItem(SOURCE_URL_KEY, configuredSourceUrl);
+      }
       return { loaded: true, count: sourceCatalogByBarcode.size };
     }
     updateSourceStatus(false);
@@ -732,6 +741,22 @@ loadSourceCsvButton.addEventListener("click", () => {
   sourceFileInput.click();
 });
 
+loadSourceUrlButton.addEventListener("click", async () => {
+  const sourceUrl = sourceUrlInput?.value?.trim() || "";
+  if (!sourceUrl) {
+    window.alert("Enter a source URL first.");
+    return;
+  }
+
+  const result = await loadSourceCatalog();
+  if (result.loaded) {
+    window.alert(`Source URL loaded: ${result.count} entries.`);
+    return;
+  }
+
+  window.alert("Could not load source URL. Check URL and CORS settings.");
+});
+
 sourceFileInput.addEventListener("change", async () => {
   const file = sourceFileInput.files?.[0];
   if (!file) {
@@ -842,6 +867,10 @@ jsonFileInput.addEventListener("change", async () => {
 });
 
 attachNumericInputGuards();
+const savedSourceUrl = localStorage.getItem(SOURCE_URL_KEY);
+if (sourceUrlInput && savedSourceUrl) {
+  sourceUrlInput.value = savedSourceUrl;
+}
 notifySourceCatalogStatusOnStartup();
 loadState();
 renderAisleSelect();
