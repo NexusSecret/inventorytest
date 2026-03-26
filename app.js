@@ -213,8 +213,6 @@ async function notifySourceCatalogStatusOnStartup() {
   const result = await loadSourceCatalog();
   if (result.loaded) {
     window.alert(`source.csv loaded with ${result.count} entries.`);
-  } else {
-    window.alert("source.csv was not loaded.");
   }
 }
 
