@@ -198,12 +198,23 @@ async function loadSourceCatalog() {
   try {
     const response = await fetch("source.csv", { cache: "no-store" });
     if (!response.ok) {
-      return;
+      return { loaded: false, count: 0 };
     }
     const text = await response.text();
     parseSourceCatalogCsv(text);
+    return { loaded: true, count: sourceCatalogByBarcode.size };
   } catch {
     // source catalog is optional; ignore load errors
+    return { loaded: false, count: 0 };
+  }
+}
+
+async function notifySourceCatalogStatusOnStartup() {
+  const result = await loadSourceCatalog();
+  if (result.loaded) {
+    window.alert(`source.csv loaded with ${result.count} entries.`);
+  } else {
+    window.alert("source.csv was not loaded.");
   }
 }
 
@@ -791,7 +802,7 @@ jsonFileInput.addEventListener("change", async () => {
 });
 
 attachNumericInputGuards();
-loadSourceCatalog();
+notifySourceCatalogStatusOnStartup();
 loadState();
 renderAisleSelect();
 renderGrid();
