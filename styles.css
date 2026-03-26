@@ -1,5 +1,5 @@
 :root {
-  --cell-size: 121px;
+  --cell-size: 131px;
   --gap: 8px;
   --grid-bg: #f6f8fb;
   --cell-bg: #ffffff;
@@ -42,7 +42,7 @@ h1 {
 
 .sheet-title-label {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   font-size: 0.85rem;
   font-weight: 600;
 }
@@ -111,7 +111,7 @@ h1 {
 .cell-buttons {
   position: absolute;
   left: 8px;
-  width: 78px;
+  width: 64px;
   bottom: 8px;
   display: grid;
   grid-template-columns: 1fr;
