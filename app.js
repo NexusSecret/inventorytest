@@ -27,6 +27,7 @@ const closeEditButton = document.getElementById("close-edit");
 const closeViewButton = document.getElementById("close-view");
 const closeEditTopButton = document.getElementById("close-edit-top");
 const closeViewTopButton = document.getElementById("close-view-top");
+const barcodeLookupButton = document.getElementById("barcode-lookup");
 
 let currentEditCoordinate = null;
 let editingItemIndex = null;
@@ -35,6 +36,7 @@ const aisles = [{ id: "default", name: "Inventory" }];
 const cellModes = new Map();
 const cellLabels = new Map();
 const inventoryItems = [];
+const sourceCatalogByBarcode = new Map();
 
 const numericFieldNames = ["carton", "single", "cartonSize"];
 
@@ -130,6 +132,58 @@ function parseCsvLine(line) {
   }
   cells.push(current);
   return cells;
+}
+
+function findColumnIndex(header, candidates) {
+  const normalizedHeader = header.map((entry) => entry.trim().toLowerCase());
+  return normalizedHeader.findIndex((entry) => candidates.includes(entry));
+}
+
+function parseSourceCatalogCsv(text) {
+  sourceCatalogByBarcode.clear();
+  const rows = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (rows.length < 2) {
+    return;
+  }
+
+  const header = parseCsvLine(rows[0]);
+  const barcodeIndex = findColumnIndex(header, ["barcode"]);
+  const codeIndex = findColumnIndex(header, ["product code", "code"]);
+  const descriptionIndex = findColumnIndex(header, ["description"]);
+  const cartonSizeIndex = findColumnIndex(header, ["carton size"]);
+  const avgCostIndex = findColumnIndex(header, ["avg cost"]);
+
+  if (barcodeIndex < 0) {
+    return;
+  }
+
+  for (let index = 1; index < rows.length; index += 1) {
+    const columns = parseCsvLine(rows[index]);
+    const barcode = (columns[barcodeIndex] || "").trim();
+    if (!barcode) {
+      continue;
+    }
+
+    sourceCatalogByBarcode.set(barcode, {
+      code: (columns[codeIndex] || "").trim(),
+      description: (columns[descriptionIndex] || "").trim(),
+      cartonSize: (columns[cartonSizeIndex] || "").trim(),
+      avgCost: (columns[avgCostIndex] || "").trim(),
+    });
+  }
+}
+
+async function loadSourceCatalog() {
+  try {
+    const response = await fetch("source.csv", { cache: "no-store" });
+    if (!response.ok) {
+      return;
+    }
+    const text = await response.text();
+    parseSourceCatalogCsv(text);
+  } catch {
+    // source catalog is optional; ignore load errors
+  }
 }
 
 function normalizeNumericInput(value) {
@@ -547,6 +601,25 @@ modalBackdrop.addEventListener("click", (event) => {
   }
 });
 
+barcodeLookupButton.addEventListener("click", () => {
+  const barcode = editForm.elements.barcode.value?.trim() || "";
+  if (!barcode) {
+    window.alert("Enter a barcode first.");
+    return;
+  }
+
+  const match = sourceCatalogByBarcode.get(barcode);
+  if (!match) {
+    window.alert("Barcode not found in source.csv.");
+    return;
+  }
+
+  editForm.elements.code.value = match.code || editForm.elements.code.value;
+  editForm.elements.description.value = match.description || editForm.elements.description.value;
+  editForm.elements.cartonSize.value = match.cartonSize || editForm.elements.cartonSize.value;
+  editForm.elements.avgCost.value = match.avgCost || editForm.elements.avgCost.value;
+});
+
 newAisleButton.addEventListener("click", () => {
   const name = window.prompt("Enter new aisle name:", "Aisle 2")?.trim();
   if (!name) {
@@ -693,6 +766,7 @@ jsonFileInput.addEventListener("change", async () => {
 });
 
 attachNumericInputGuards();
+loadSourceCatalog();
 loadState();
 renderAisleSelect();
 renderGrid();

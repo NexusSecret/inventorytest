@@ -36,7 +36,12 @@
         <p id="edit-coordinate" class="modal-coordinate"></p>
         <form id="edit-form" class="edit-form">
           <label>Product Code <input name="code" required /></label>
-          <label>Barcode <input name="barcode" /></label>
+          <label>Barcode
+            <div class="barcode-input-row">
+              <input name="barcode" />
+              <button id="barcode-lookup" type="button">Lookup</button>
+            </div>
+          </label>
           <label>Avg Cost <input name="avgCost" type="number" min="0" step="0.01" inputmode="decimal" /></label>
           <label>Description <input name="description" /></label>
           <label>Carton <input name="carton" type="number" min="0" step="1" inputmode="numeric" /></label>
