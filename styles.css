@@ -73,9 +73,11 @@ h1 {
   display: flex;
   gap: 8px;
   margin-top: 10px;
+  flex-wrap: wrap;
 }
 
-.source-actions button {
+.source-actions button,
+.output-actions button {
   border: 1px solid #b9c6da;
   border-radius: 6px;
   background: #fff;
@@ -84,6 +86,12 @@ h1 {
   min-height: 38px;
   padding: 8px 12px;
   cursor: pointer;
+}
+
+.output-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .inventory-grid {

@@ -19,11 +19,8 @@
           <select id="aisle-select"></select>
         </label>
         <button id="new-aisle" type="button">New Aisle</button>
-        <button id="export-csv" type="button">Export CSV</button>
-        <button id="import-csv" type="button">Import CSV</button>
         <button id="open-source-menu" type="button">Update Source</button>
-        <button id="export-json" type="button">Export JSON</button>
-        <button id="import-json" type="button">Import JSON</button>
+        <button id="open-output-menu" type="button">Update Output</button>
         <input id="csv-file-input" type="file" accept=".csv,text/csv" hidden />
         <input id="json-file-input" type="file" accept=".json,application/json" hidden />
       </section>
@@ -87,6 +84,22 @@
           <button id="close-source-menu" type="button">Close</button>
         </div>
         <input id="source-file-input" type="file" accept=".csv,text/csv" hidden />
+      </div>
+    </div>
+
+    <div id="output-menu-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="output-menu-title">
+        <div class="modal-header">
+          <h2 id="output-menu-title">Update Output</h2>
+          <button id="close-output-menu-top" class="modal-close-top" type="button" aria-label="Close output dialog">×</button>
+        </div>
+        <div class="output-actions">
+          <button id="export-csv" type="button">Export CSV</button>
+          <button id="import-csv" type="button">Import CSV</button>
+          <button id="export-json" type="button">Export JSON</button>
+          <button id="import-json" type="button">Import JSON</button>
+          <button id="close-output-menu" type="button">Close</button>
+        </div>
       </div>
     </div>
 

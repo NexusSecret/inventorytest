@@ -7,6 +7,7 @@ const grid = document.getElementById("inventory-grid");
 const exportCsvButton = document.getElementById("export-csv");
 const importCsvButton = document.getElementById("import-csv");
 const openSourceMenuButton = document.getElementById("open-source-menu");
+const openOutputMenuButton = document.getElementById("open-output-menu");
 const loadSourceCsvButton = document.getElementById("load-source-csv");
 const loadSourceUrlButton = document.getElementById("load-source-url");
 const csvFileInput = document.getElementById("csv-file-input");
@@ -38,6 +39,9 @@ const barcodeLookupButton = document.getElementById("barcode-lookup");
 const sourceMenuBackdrop = document.getElementById("source-menu-backdrop");
 const closeSourceMenuButton = document.getElementById("close-source-menu");
 const closeSourceMenuTopButton = document.getElementById("close-source-menu-top");
+const outputMenuBackdrop = document.getElementById("output-menu-backdrop");
+const closeOutputMenuButton = document.getElementById("close-output-menu");
+const closeOutputMenuTopButton = document.getElementById("close-output-menu-top");
 
 let currentEditCoordinate = null;
 let editingItemIndex = null;
@@ -365,6 +369,14 @@ function closeSourceMenu() {
   sourceMenuBackdrop.classList.add("hidden");
 }
 
+function openOutputMenu() {
+  outputMenuBackdrop.classList.remove("hidden");
+}
+
+function closeOutputMenu() {
+  outputMenuBackdrop.classList.add("hidden");
+}
+
 function setCellVisualMode(cell, lockButton, inactive) {
   const actionButtons = cell.querySelectorAll(".cell-action");
   const labelInput = cell.querySelector(".cell-label-input");
@@ -668,6 +680,9 @@ closeViewTopButton.addEventListener("click", closeModals);
 openSourceMenuButton.addEventListener("click", openSourceMenu);
 closeSourceMenuButton.addEventListener("click", closeSourceMenu);
 closeSourceMenuTopButton.addEventListener("click", closeSourceMenu);
+openOutputMenuButton.addEventListener("click", openOutputMenu);
+closeOutputMenuButton.addEventListener("click", closeOutputMenu);
+closeOutputMenuTopButton.addEventListener("click", closeOutputMenu);
 modalBackdrop.addEventListener("click", (event) => {
   if (event.target === modalBackdrop) {
     closeModals();
@@ -676,6 +691,11 @@ modalBackdrop.addEventListener("click", (event) => {
 sourceMenuBackdrop.addEventListener("click", (event) => {
   if (event.target === sourceMenuBackdrop) {
     closeSourceMenu();
+  }
+});
+outputMenuBackdrop.addEventListener("click", (event) => {
+  if (event.target === outputMenuBackdrop) {
+    closeOutputMenu();
   }
 });
 
