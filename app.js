@@ -264,26 +264,35 @@ async function persistUpdatedSourceCatalog() {
 
   if (!saveUrl) {
     downloadSourceCatalogCsv();
-    return { mode: "downloaded" };
+    return { mode: "downloaded", reason: "No Source Save URL configured." };
   }
 
+  const attemptErrors = [];
   try {
-    const response = await fetch(saveUrl, {
-      method: "PUT",
-      headers: { "Content-Type": "text/csv;charset=utf-8" },
-      body: csvText,
-    });
+    for (const method of ["PUT", "POST"]) {
+      const response = await fetch(saveUrl, {
+        method,
+        headers: { "Content-Type": "text/csv;charset=utf-8" },
+        body: csvText,
+      });
 
-    if (!response.ok) {
-      throw new Error(`Save URL responded with ${response.status}`);
+      if (response.ok) {
+        localStorage.setItem(SOURCE_SAVE_URL_KEY, saveUrl);
+        return { mode: "remote-saved", method };
+      }
+
+      const responseText = await response.text().catch(() => "");
+      attemptErrors.push(`${method} ${response.status}${responseText ? `: ${responseText.slice(0, 120)}` : ""}`);
     }
-
-    localStorage.setItem(SOURCE_SAVE_URL_KEY, saveUrl);
-    return { mode: "remote-saved" };
   } catch {
-    downloadSourceCatalogCsv();
-    return { mode: "downloaded-fallback" };
+    attemptErrors.push("Network/CORS error");
   }
+
+  downloadSourceCatalogCsv();
+  return {
+    mode: "downloaded-fallback",
+    reason: attemptErrors.join(" | "),
+  };
 }
 
 async function loadSourceCatalog() {
@@ -801,11 +810,11 @@ barcodeLookupButton.addEventListener("click", async () => {
     updateSourceStatus(true);
     const saveResult = await persistUpdatedSourceCatalog();
     if (saveResult.mode === "remote-saved") {
-      window.alert("Barcode added and source catalog saved to Source Save URL.");
+      window.alert(`Barcode added and source catalog saved to Source Save URL using ${saveResult.method}.`);
       return;
     }
     if (saveResult.mode === "downloaded-fallback") {
-      window.alert("Barcode added. Could not save to Source Save URL, downloaded updated source.csv instead.");
+      window.alert(`Barcode added. Could not save to Source Save URL (${saveResult.reason || "unknown error"}). Downloaded updated source.csv instead.`);
       return;
     }
     window.alert("Barcode added. Downloaded updated source.csv.");
