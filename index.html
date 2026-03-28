@@ -8,22 +8,20 @@
   </head>
   <body>
     <main class="app">
-      <h1>Inventory Management Grid</h1>
-      <p class="legend">
-        Coordinates run from the bottom-left to the top-right and use the first letter of the spreadsheet title.
-      </p>
-
-      <section class="app-controls" aria-label="Inventory import/export controls">
-        <label class="sheet-title-label">
-          Aisle
-          <select id="aisle-select"></select>
-        </label>
-        <button id="new-aisle" type="button">New Aisle</button>
-        <button id="open-source-menu" type="button">Update Source</button>
-        <button id="open-output-menu" type="button">Update Output</button>
-        <input id="csv-file-input" type="file" accept=".csv,text/csv" hidden />
-        <input id="json-file-input" type="file" accept=".json,application/json" hidden />
-      </section>
+      <div class="app-toolbar">
+        <h1>Stock Manager</h1>
+        <section class="app-controls" aria-label="Inventory import/export controls">
+          <label class="sheet-title-label">
+            Aisle
+            <select id="aisle-select"></select>
+          </label>
+          <button id="new-aisle" type="button">New Aisle</button>
+          <button id="open-source-menu" type="button">Update Source</button>
+          <button id="open-output-menu" type="button">Update Output</button>
+          <input id="csv-file-input" type="file" accept=".csv,text/csv" hidden />
+          <input id="json-file-input" type="file" accept=".json,application/json" hidden />
+        </section>
+      </div>
 
       <section id="inventory-grid" class="inventory-grid" aria-label="Inventory coordinate grid"></section>
     </main>
