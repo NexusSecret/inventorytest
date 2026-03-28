@@ -1,0 +1,47 @@
+[
+  {
+    "Aisle": "Inventory",
+    "Coordinate": "I0101",
+    "Product Code": "PC-1001",
+    "Barcode": 1001,
+    "Description": "Test Product 1001",
+    "Carton": 4,
+    "Carton Size": 12,
+    "Single": 0,
+    "Total Units": 48,
+    "Avg Cost": 2.5,
+    "Total Cost": 120,
+    "Date": "2026-03-26",
+    "Notes": "Lookup test row"
+  },
+  {
+    "Aisle": "Inventory",
+    "Coordinate": "I0102",
+    "Product Code": "PC-1002",
+    "Barcode": 1002,
+    "Description": "Test Product 1002",
+    "Carton": 2,
+    "Carton Size": 24,
+    "Single": 0,
+    "Total Units": 48,
+    "Avg Cost": 3.15,
+    "Total Cost": 151.2,
+    "Date": "2026-03-26",
+    "Notes": "Lookup test row"
+  },
+  {
+    "Aisle": "Inventory",
+    "Coordinate": "I0103",
+    "Product Code": "PC-2001",
+    "Barcode": 2001,
+    "Description": "Test Product 2001",
+    "Carton": 1,
+    "Carton Size": 6,
+    "Single": 0,
+    "Total Units": 6,
+    "Avg Cost": 9.99,
+    "Total Cost": 59.94,
+    "Date": "2026-03-26",
+    "Notes": "Lookup test row"
+  }
+]
