@@ -217,6 +217,39 @@ function updateSourceStatus(loaded) {
     : "Source entries: 0 (not loaded)";
 }
 
+function downloadSourceCatalogCsv() {
+  const header = ["Aisle", "Coordinate", "Product Code", "Barcode", "Description", "Carton", "Carton Size", "Single", "Total Units", "Avg Cost", "Total Cost", "Date", "Notes"];
+  const lines = [header.join(",")];
+
+  Array.from(sourceCatalogByBarcode.entries())
+    .sort(([barcodeA], [barcodeB]) => barcodeA.localeCompare(barcodeB, undefined, { numeric: true }))
+    .forEach(([barcode, entry]) => {
+      lines.push([
+        "",
+        "",
+        escapeCsv(entry.code || ""),
+        escapeCsv(barcode),
+        escapeCsv(entry.description || ""),
+        "",
+        escapeCsv(entry.cartonSize || ""),
+        "",
+        "",
+        escapeCsv(entry.avgCost || ""),
+        "",
+        "",
+        "Added from app lookup prompt",
+      ].join(","));
+    });
+
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "source.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 async function loadSourceCatalog() {
   const configuredSourceUrl = sourceUrlInput?.value?.trim() || "";
   const sourcePaths = configuredSourceUrl
@@ -712,7 +745,26 @@ barcodeLookupButton.addEventListener("click", async () => {
     match = sourceCatalogByBarcode.get(barcode);
   }
   if (!match) {
-    window.alert("Barcode not found in source.csv.");
+    const shouldAdd = window.confirm("Barcode doesn't exist, add it to the source?");
+    if (!shouldAdd) {
+      window.alert("Barcode not found in source.csv.");
+      return;
+    }
+
+    const code = editForm.elements.code.value?.trim() || "";
+    const description = editForm.elements.description.value?.trim() || "";
+    const cartonSize = editForm.elements.cartonSize.value?.trim() || "";
+    const avgCost = editForm.elements.avgCost.value?.trim() || "";
+
+    if (!code || !description || !cartonSize) {
+      window.alert("To add a missing barcode, fill Product Code, Description, and Carton Size first.");
+      return;
+    }
+
+    sourceCatalogByBarcode.set(barcode, { code, description, cartonSize, avgCost });
+    updateSourceStatus(true);
+    downloadSourceCatalogCsv();
+    window.alert("Barcode added. Downloaded updated source.csv.");
     return;
   }
 
