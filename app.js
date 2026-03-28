@@ -230,12 +230,12 @@ function parseSourceCatalogJson(text) {
   });
 }
 
-function updateSourceStatus(loaded) {
+function updateSourceStatus(loaded, format = "") {
   if (!sourceStatus) {
     return;
   }
   sourceStatus.textContent = loaded
-    ? `Source entries: ${sourceCatalogByBarcode.size}`
+    ? `Source entries: ${sourceCatalogByBarcode.size}${format ? ` (${format})` : ""}`
     : "Source entries: 0 (not loaded)";
 }
 
@@ -365,14 +365,20 @@ async function loadSourceCatalog() {
       const looksJson = sourcePath.toLowerCase().endsWith(".json") || contentType.includes("application/json");
       if (looksJson) {
         parseSourceCatalogJson(text);
+        updateSourceStatus(true, "JSON");
       } else {
         parseSourceCatalogCsv(text);
+        updateSourceStatus(true, "CSV");
       }
-      updateSourceStatus(true);
       if (sourceUrlInput && sourcePath === configuredSourceUrl && configuredSourceUrl) {
         localStorage.setItem(SOURCE_URL_KEY, configuredSourceUrl);
       }
-      return { loaded: true, count: sourceCatalogByBarcode.size };
+      return {
+        loaded: true,
+        count: sourceCatalogByBarcode.size,
+        sourcePath,
+        format: looksJson ? "JSON" : "CSV",
+      };
     }
     updateSourceStatus(false);
     return { loaded: false, count: 0 };
@@ -386,7 +392,7 @@ async function loadSourceCatalog() {
 async function notifySourceCatalogStatusOnStartup() {
   const result = await loadSourceCatalog();
   if (result.loaded) {
-    window.alert(`Source catalog loaded with ${result.count} entries.`);
+    window.alert(`Source catalog loaded from ${result.sourcePath} (${result.format}) with ${result.count} entries.`);
   }
 }
 
@@ -955,7 +961,7 @@ loadSourceUrlButton.addEventListener("click", async () => {
 
   const result = await loadSourceCatalog();
   if (result.loaded) {
-    window.alert(`Source URL loaded: ${result.count} entries.`);
+    window.alert(`Source URL loaded (${result.format}): ${result.count} entries.`);
     return;
   }
 
@@ -991,10 +997,11 @@ sourceFileInput.addEventListener("change", async () => {
     const looksJson = file.name.toLowerCase().endsWith(".json") || text.trim().startsWith("{") || text.trim().startsWith("[");
     if (looksJson) {
       parseSourceCatalogJson(text);
+      updateSourceStatus(true, "JSON");
     } else {
       parseSourceCatalogCsv(text);
+      updateSourceStatus(true, "CSV");
     }
-    updateSourceStatus(true);
     window.alert(`Source file loaded: ${sourceCatalogByBarcode.size} entries.`);
   } catch {
     updateSourceStatus(false);
