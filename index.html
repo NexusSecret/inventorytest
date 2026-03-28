@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inventory Grid</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <div class="app-toolbar">
+        <h1>Stock Manager</h1>
+        <section class="app-controls" aria-label="Inventory import/export controls">
+          <label class="sheet-title-label">
+            Aisle
+            <select id="aisle-select"></select>
+          </label>
+          <button id="new-aisle" type="button">New Aisle</button>
+          <button id="open-source-menu" type="button">Update Source</button>
+          <button id="open-output-menu" type="button">Update Output</button>
+          <input id="csv-file-input" type="file" accept=".csv,text/csv" hidden />
+          <input id="json-file-input" type="file" accept=".json,application/json" hidden />
+        </section>
+      </div>
+
+      <section id="inventory-grid" class="inventory-grid" aria-label="Inventory coordinate grid"></section>
+    </main>
+
+    <div id="modal-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+      <div id="edit-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+        <div class="modal-header"><h2 id="edit-modal-title">Edit Slot</h2><button id="close-edit-top" class="modal-close-top" type="button" aria-label="Close edit dialog">×</button></div>
+        <p id="edit-coordinate" class="modal-coordinate"></p>
+        <form id="edit-form" class="edit-form">
+          <label>Product Code <input name="code" required /></label>
+          <label>Barcode
+            <div class="barcode-input-row">
+              <input name="barcode" />
+              <button id="barcode-lookup" type="button">Lookup</button>
+            </div>
+          </label>
+          <label>Avg Cost <input name="avgCost" type="number" min="0" step="0.01" inputmode="decimal" /></label>
+          <label>Description <input name="description" /></label>
+          <label>Carton <input name="carton" type="number" min="0" step="1" inputmode="numeric" /></label>
+          <label>Single <input name="single" type="number" min="0" step="1" inputmode="numeric" /></label>
+          <label>Carton Size <input name="cartonSize" type="number" min="0" step="1" inputmode="numeric" /></label>
+          <label>Date <input type="date" name="date" /></label>
+          <label>Notes <textarea name="notes" rows="3"></textarea></label>
+          <div class="modal-actions">
+            <button type="submit" id="save-item">Add Item</button>
+            <button type="button" id="cancel-item-edit" class="hidden">Cancel Edit</button>
+            <button type="button" id="clear-cell">Clear Cell</button>
+            <button type="button" id="close-edit">Close</button>
+          </div>
+        </form>
+        <div id="edit-items-list" class="modal-list"></div>
+      </div>
+
+      <div id="view-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="view-modal-title">
+        <div class="modal-header"><h2 id="view-modal-title">View Slot</h2><button id="close-view-top" class="modal-close-top" type="button" aria-label="Close view dialog">×</button></div>
+        <p id="view-coordinate" class="modal-coordinate"></p>
+        <div id="view-items-list" class="modal-list"></div>
+        <div class="modal-actions">
+          <button type="button" id="close-view">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="source-menu-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="source-menu-title">
+        <div class="modal-header">
+          <h2 id="source-menu-title">Update Source Catalog</h2>
+          <button id="close-source-menu-top" class="modal-close-top" type="button" aria-label="Close source dialog">×</button>
+        </div>
+        <p id="source-status">Source entries: 0</p>
+        <label class="source-url-label">
+          Source URL
+          <input id="source-url-input" type="url" placeholder="https://example.com/source.csv" />
+        </label>
+        <label class="source-url-label">
+          Source Save URL (optional)
+          <input id="source-save-url-input" type="url" placeholder="https://example.com/api/source.csv" />
+        </label>
+        <div class="source-actions">
+          <button id="load-source-url" type="button">Load Source URL</button>
+          <button id="test-source-save-url" type="button">Test Save URL</button>
+          <button id="load-source-csv" type="button">Load Source File</button>
+          <button id="close-source-menu" type="button">Close</button>
+        </div>
+        <input id="source-file-input" type="file" accept=".json,application/json,.csv,text/csv" hidden />
+      </div>
+    </div>
+
+    <div id="output-menu-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="output-menu-title">
+        <div class="modal-header">
+          <h2 id="output-menu-title">Update Output</h2>
+          <button id="close-output-menu-top" class="modal-close-top" type="button" aria-label="Close output dialog">×</button>
+        </div>
+        <div class="output-actions">
+          <button id="export-csv" type="button">Export CSV</button>
+          <button id="import-csv" type="button">Import CSV</button>
+          <button id="export-json" type="button">Export JSON</button>
+          <button id="import-json" type="button">Import JSON</button>
+          <button id="close-output-menu" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
