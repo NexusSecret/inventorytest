@@ -11,6 +11,7 @@ const openSourceMenuButton = document.getElementById("open-source-menu");
 const openOutputMenuButton = document.getElementById("open-output-menu");
 const loadSourceCsvButton = document.getElementById("load-source-csv");
 const loadSourceUrlButton = document.getElementById("load-source-url");
+const testSourceSaveUrlButton = document.getElementById("test-source-save-url");
 const csvFileInput = document.getElementById("csv-file-input");
 const sourceFileInput = document.getElementById("source-file-input");
 const sourceUrlInput = document.getElementById("source-url-input");
@@ -210,6 +211,25 @@ function parseSourceCatalogCsv(text) {
   }
 }
 
+function parseSourceCatalogJson(text) {
+  sourceCatalogByBarcode.clear();
+  const parsed = JSON.parse(text);
+  const entries = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
+
+  entries.forEach((entry) => {
+    const barcode = normalizeBarcode(entry?.barcode);
+    if (!barcode) {
+      return;
+    }
+    sourceCatalogByBarcode.set(barcode, {
+      code: String(entry?.code || entry?.productCode || "").trim(),
+      description: String(entry?.description || "").trim(),
+      cartonSize: String(entry?.cartonSize || "").trim(),
+      avgCost: String(entry?.avgCost || "").trim(),
+    });
+  });
+}
+
 function updateSourceStatus(loaded) {
   if (!sourceStatus) {
     return;
@@ -246,6 +266,27 @@ function buildSourceCatalogCsvText() {
   return lines.join("\n");
 }
 
+function buildSourceCatalogJsonText() {
+  const items = Array.from(sourceCatalogByBarcode.entries())
+    .sort(([barcodeA], [barcodeB]) => barcodeA.localeCompare(barcodeB, undefined, { numeric: true }))
+    .map(([barcode, entry]) => ({
+      barcode,
+      code: entry.code || "",
+      description: entry.description || "",
+      cartonSize: entry.cartonSize || "",
+      avgCost: entry.avgCost || "",
+    }));
+
+  return JSON.stringify({ items }, null, 2);
+}
+
+function getSourceSavePayload(saveUrl) {
+  const isJson = saveUrl.trim().toLowerCase().endsWith(".json");
+  return isJson
+    ? { body: buildSourceCatalogJsonText(), contentType: "application/json", extension: "json" }
+    : { body: buildSourceCatalogCsvText(), contentType: "text/csv;charset=utf-8", extension: "csv" };
+}
+
 function downloadSourceCatalogCsv() {
   const csvText = buildSourceCatalogCsvText();
 
@@ -260,25 +301,38 @@ function downloadSourceCatalogCsv() {
 
 async function persistUpdatedSourceCatalog() {
   const saveUrl = sourceSaveUrlInput?.value?.trim() || "";
-  const csvText = buildSourceCatalogCsvText();
+  const payload = getSourceSavePayload(saveUrl);
 
   if (!saveUrl) {
     downloadSourceCatalogCsv();
     return { mode: "downloaded", reason: "No Source Save URL configured." };
   }
 
+  const saveAttempt = await attemptRemoteSourceSave(saveUrl, payload);
+  if (saveAttempt.ok) {
+    localStorage.setItem(SOURCE_SAVE_URL_KEY, saveUrl);
+    return { mode: "remote-saved", method: saveAttempt.method };
+  }
+
+  downloadSourceCatalogCsv();
+  return {
+    mode: "downloaded-fallback",
+    reason: saveAttempt.reason,
+  };
+}
+
+async function attemptRemoteSourceSave(saveUrl, payload) {
   const attemptErrors = [];
   try {
     for (const method of ["PUT", "POST"]) {
       const response = await fetch(saveUrl, {
         method,
-        headers: { "Content-Type": "text/csv;charset=utf-8" },
-        body: csvText,
+        headers: { "Content-Type": payload.contentType },
+        body: payload.body,
       });
 
       if (response.ok) {
-        localStorage.setItem(SOURCE_SAVE_URL_KEY, saveUrl);
-        return { mode: "remote-saved", method };
+        return { ok: true, method };
       }
 
       const responseText = await response.text().catch(() => "");
@@ -288,9 +342,8 @@ async function persistUpdatedSourceCatalog() {
     attemptErrors.push("Network/CORS error");
   }
 
-  downloadSourceCatalogCsv();
   return {
-    mode: "downloaded-fallback",
+    ok: false,
     reason: attemptErrors.join(" | "),
   };
 }
@@ -307,7 +360,13 @@ async function loadSourceCatalog() {
         continue;
       }
       const text = await response.text();
-      parseSourceCatalogCsv(text);
+      const contentType = response.headers.get("content-type") || "";
+      const looksJson = sourcePath.toLowerCase().endsWith(".json") || contentType.includes("application/json");
+      if (looksJson) {
+        parseSourceCatalogJson(text);
+      } else {
+        parseSourceCatalogCsv(text);
+      }
       updateSourceStatus(true);
       if (sourceUrlInput && sourcePath === configuredSourceUrl && configuredSourceUrl) {
         localStorage.setItem(SOURCE_URL_KEY, configuredSourceUrl);
@@ -900,6 +959,24 @@ loadSourceUrlButton.addEventListener("click", async () => {
   }
 
   window.alert("Could not load source URL. Check URL and CORS settings.");
+});
+
+testSourceSaveUrlButton.addEventListener("click", async () => {
+  const saveUrl = sourceSaveUrlInput?.value?.trim() || "";
+  if (!saveUrl) {
+    window.alert("Enter a Source Save URL first.");
+    return;
+  }
+
+  const payload = getSourceSavePayload(saveUrl);
+  const result = await attemptRemoteSourceSave(saveUrl, payload);
+  if (result.ok) {
+    window.alert(`Save URL test succeeded using ${result.method}.`);
+    localStorage.setItem(SOURCE_SAVE_URL_KEY, saveUrl);
+    return;
+  }
+
+  window.alert(`Save URL test failed: ${result.reason || "Unknown error"}`);
 });
 
 sourceFileInput.addEventListener("change", async () => {
