@@ -6,6 +6,7 @@ const SOURCE_URL_KEY = "inventory-source-url";
 const grid = document.getElementById("inventory-grid");
 const exportCsvButton = document.getElementById("export-csv");
 const importCsvButton = document.getElementById("import-csv");
+const openSourceMenuButton = document.getElementById("open-source-menu");
 const loadSourceCsvButton = document.getElementById("load-source-csv");
 const loadSourceUrlButton = document.getElementById("load-source-url");
 const csvFileInput = document.getElementById("csv-file-input");
@@ -34,6 +35,9 @@ const closeViewButton = document.getElementById("close-view");
 const closeEditTopButton = document.getElementById("close-edit-top");
 const closeViewTopButton = document.getElementById("close-view-top");
 const barcodeLookupButton = document.getElementById("barcode-lookup");
+const sourceMenuBackdrop = document.getElementById("source-menu-backdrop");
+const closeSourceMenuButton = document.getElementById("close-source-menu");
+const closeSourceMenuTopButton = document.getElementById("close-source-menu-top");
 
 let currentEditCoordinate = null;
 let editingItemIndex = null;
@@ -353,6 +357,14 @@ function closeModals() {
   resetEditState();
 }
 
+function openSourceMenu() {
+  sourceMenuBackdrop.classList.remove("hidden");
+}
+
+function closeSourceMenu() {
+  sourceMenuBackdrop.classList.add("hidden");
+}
+
 function setCellVisualMode(cell, lockButton, inactive) {
   const actionButtons = cell.querySelectorAll(".cell-action");
   const labelInput = cell.querySelector(".cell-label-input");
@@ -653,9 +665,17 @@ closeEditButton.addEventListener("click", closeModals);
 closeViewButton.addEventListener("click", closeModals);
 closeEditTopButton.addEventListener("click", closeModals);
 closeViewTopButton.addEventListener("click", closeModals);
+openSourceMenuButton.addEventListener("click", openSourceMenu);
+closeSourceMenuButton.addEventListener("click", closeSourceMenu);
+closeSourceMenuTopButton.addEventListener("click", closeSourceMenu);
 modalBackdrop.addEventListener("click", (event) => {
   if (event.target === modalBackdrop) {
     closeModals();
+  }
+});
+sourceMenuBackdrop.addEventListener("click", (event) => {
+  if (event.target === sourceMenuBackdrop) {
+    closeSourceMenu();
   }
 });
 

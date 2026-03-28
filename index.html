@@ -21,17 +21,10 @@
         <button id="new-aisle" type="button">New Aisle</button>
         <button id="export-csv" type="button">Export CSV</button>
         <button id="import-csv" type="button">Import CSV</button>
-        <button id="load-source-csv" type="button">Load Source CSV</button>
-        <label class="source-url-label">
-          Source URL
-          <input id="source-url-input" type="url" placeholder="https://example.com/source.csv" />
-        </label>
-        <button id="load-source-url" type="button">Load Source URL</button>
+        <button id="open-source-menu" type="button">Update Source</button>
         <button id="export-json" type="button">Export JSON</button>
         <button id="import-json" type="button">Import JSON</button>
-        <span id="source-status">Source entries: 0</span>
         <input id="csv-file-input" type="file" accept=".csv,text/csv" hidden />
-        <input id="source-file-input" type="file" accept=".csv,text/csv" hidden />
         <input id="json-file-input" type="file" accept=".json,application/json" hidden />
       </section>
 
@@ -74,6 +67,26 @@
         <div class="modal-actions">
           <button type="button" id="close-view">Close</button>
         </div>
+      </div>
+    </div>
+
+    <div id="source-menu-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="source-menu-title">
+        <div class="modal-header">
+          <h2 id="source-menu-title">Update Source Catalog</h2>
+          <button id="close-source-menu-top" class="modal-close-top" type="button" aria-label="Close source dialog">×</button>
+        </div>
+        <p id="source-status">Source entries: 0</p>
+        <label class="source-url-label">
+          Source URL
+          <input id="source-url-input" type="url" placeholder="https://example.com/source.csv" />
+        </label>
+        <div class="source-actions">
+          <button id="load-source-url" type="button">Load Source URL</button>
+          <button id="load-source-csv" type="button">Load Source CSV</button>
+          <button id="close-source-menu" type="button">Close</button>
+        </div>
+        <input id="source-file-input" type="file" accept=".csv,text/csv" hidden />
       </div>
     </div>
 
