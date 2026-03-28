@@ -2,6 +2,7 @@ const MAX_X = 10;
 const MAX_Y = 4;
 const STORAGE_KEY = "inventory-grid-state-v1";
 const SOURCE_URL_KEY = "inventory-source-url";
+const SOURCE_SAVE_URL_KEY = "inventory-source-save-url";
 
 const grid = document.getElementById("inventory-grid");
 const exportCsvButton = document.getElementById("export-csv");
@@ -13,6 +14,7 @@ const loadSourceUrlButton = document.getElementById("load-source-url");
 const csvFileInput = document.getElementById("csv-file-input");
 const sourceFileInput = document.getElementById("source-file-input");
 const sourceUrlInput = document.getElementById("source-url-input");
+const sourceSaveUrlInput = document.getElementById("source-save-url-input");
 const exportJsonButton = document.getElementById("export-json");
 const importJsonButton = document.getElementById("import-json");
 const jsonFileInput = document.getElementById("json-file-input");
@@ -217,7 +219,7 @@ function updateSourceStatus(loaded) {
     : "Source entries: 0 (not loaded)";
 }
 
-function downloadSourceCatalogCsv() {
+function buildSourceCatalogCsvText() {
   const header = ["Aisle", "Coordinate", "Product Code", "Barcode", "Description", "Carton", "Carton Size", "Single", "Total Units", "Avg Cost", "Total Cost", "Date", "Notes"];
   const lines = [header.join(",")];
 
@@ -241,13 +243,47 @@ function downloadSourceCatalogCsv() {
       ].join(","));
     });
 
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  return lines.join("\n");
+}
+
+function downloadSourceCatalogCsv() {
+  const csvText = buildSourceCatalogCsvText();
+
+  const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = "source.csv";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+async function persistUpdatedSourceCatalog() {
+  const saveUrl = sourceSaveUrlInput?.value?.trim() || "";
+  const csvText = buildSourceCatalogCsvText();
+
+  if (!saveUrl) {
+    downloadSourceCatalogCsv();
+    return { mode: "downloaded" };
+  }
+
+  try {
+    const response = await fetch(saveUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "text/csv;charset=utf-8" },
+      body: csvText,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Save URL responded with ${response.status}`);
+    }
+
+    localStorage.setItem(SOURCE_SAVE_URL_KEY, saveUrl);
+    return { mode: "remote-saved" };
+  } catch {
+    downloadSourceCatalogCsv();
+    return { mode: "downloaded-fallback" };
+  }
 }
 
 async function loadSourceCatalog() {
@@ -763,7 +799,15 @@ barcodeLookupButton.addEventListener("click", async () => {
 
     sourceCatalogByBarcode.set(barcode, { code, description, cartonSize, avgCost });
     updateSourceStatus(true);
-    downloadSourceCatalogCsv();
+    const saveResult = await persistUpdatedSourceCatalog();
+    if (saveResult.mode === "remote-saved") {
+      window.alert("Barcode added and source catalog saved to Source Save URL.");
+      return;
+    }
+    if (saveResult.mode === "downloaded-fallback") {
+      window.alert("Barcode added. Could not save to Source Save URL, downloaded updated source.csv instead.");
+      return;
+    }
     window.alert("Barcode added. Downloaded updated source.csv.");
     return;
   }
@@ -962,6 +1006,10 @@ attachNumericInputGuards();
 const savedSourceUrl = localStorage.getItem(SOURCE_URL_KEY);
 if (sourceUrlInput && savedSourceUrl) {
   sourceUrlInput.value = savedSourceUrl;
+}
+const savedSourceSaveUrl = localStorage.getItem(SOURCE_SAVE_URL_KEY);
+if (sourceSaveUrlInput && savedSourceSaveUrl) {
+  sourceSaveUrlInput.value = savedSourceSaveUrl;
 }
 notifySourceCatalogStatusOnStartup();
 loadState();
