@@ -181,7 +181,7 @@ function parseSourceCatalogCsv(text) {
   sourceCatalogByBarcode.clear();
   const rows = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
   if (rows.length < 2) {
-    return;
+    return 0;
   }
 
   const header = parseCsvLine(rows[0]);
@@ -192,7 +192,7 @@ function parseSourceCatalogCsv(text) {
   const avgCostIndex = findColumnIndex(header, ["avg cost"]);
 
   if (barcodeIndex < 0) {
-    return;
+    return 0;
   }
 
   for (let index = 1; index < rows.length; index += 1) {
@@ -209,25 +209,42 @@ function parseSourceCatalogCsv(text) {
       avgCost: (columns[avgCostIndex] || "").trim(),
     });
   }
+
+  return sourceCatalogByBarcode.size;
 }
 
 function parseSourceCatalogJson(text) {
   sourceCatalogByBarcode.clear();
   const parsed = JSON.parse(text);
-  const entries = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
+  const entries = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.items)
+      ? parsed.items
+      : Object.values(parsed || {});
+
+  const readField = (entry, names) => {
+    for (const name of names) {
+      if (entry?.[name] !== undefined && entry?.[name] !== null) {
+        return String(entry[name]).trim();
+      }
+    }
+    return "";
+  };
 
   entries.forEach((entry) => {
-    const barcode = normalizeBarcode(entry?.barcode);
+    const barcode = normalizeBarcode(readField(entry, ["barcode", "Barcode", "BARCODE"]));
     if (!barcode) {
       return;
     }
     sourceCatalogByBarcode.set(barcode, {
-      code: String(entry?.code || entry?.productCode || "").trim(),
-      description: String(entry?.description || "").trim(),
-      cartonSize: String(entry?.cartonSize || "").trim(),
-      avgCost: String(entry?.avgCost || "").trim(),
+      code: readField(entry, ["code", "productCode", "Code", "Product Code"]),
+      description: readField(entry, ["description", "Description"]),
+      cartonSize: readField(entry, ["cartonSize", "carton_size", "Carton Size"]),
+      avgCost: readField(entry, ["avgCost", "avg_cost", "Avg Cost"]),
     });
   });
+
+  return sourceCatalogByBarcode.size;
 }
 
 function updateSourceStatus(loaded, format = "") {
@@ -363,11 +380,15 @@ async function loadSourceCatalog() {
       const text = await response.text();
       const contentType = response.headers.get("content-type") || "";
       const looksJson = sourcePath.toLowerCase().endsWith(".json") || contentType.includes("application/json");
+      const parsedCount = looksJson
+        ? parseSourceCatalogJson(text)
+        : parseSourceCatalogCsv(text);
+      if (!parsedCount) {
+        continue;
+      }
       if (looksJson) {
-        parseSourceCatalogJson(text);
         updateSourceStatus(true, "JSON");
       } else {
-        parseSourceCatalogCsv(text);
         updateSourceStatus(true, "CSV");
       }
       if (sourceUrlInput && sourcePath === configuredSourceUrl && configuredSourceUrl) {
@@ -995,11 +1016,17 @@ sourceFileInput.addEventListener("change", async () => {
   try {
     const text = await file.text();
     const looksJson = file.name.toLowerCase().endsWith(".json") || text.trim().startsWith("{") || text.trim().startsWith("[");
+    const parsedCount = looksJson
+      ? parseSourceCatalogJson(text)
+      : parseSourceCatalogCsv(text);
+    if (!parsedCount) {
+      updateSourceStatus(false);
+      window.alert("Source file loaded but no valid barcode entries were found.");
+      return;
+    }
     if (looksJson) {
-      parseSourceCatalogJson(text);
       updateSourceStatus(true, "JSON");
     } else {
-      parseSourceCatalogCsv(text);
       updateSourceStatus(true, "CSV");
     }
     window.alert(`Source file loaded: ${sourceCatalogByBarcode.size} entries.`);
