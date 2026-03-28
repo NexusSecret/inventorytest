@@ -853,17 +853,6 @@ modalBackdrop.addEventListener("click", (event) => {
     closeModals();
   }
 });
-sourceMenuBackdrop.addEventListener("click", (event) => {
-  if (event.target === sourceMenuBackdrop) {
-    closeSourceMenu();
-  }
-});
-outputMenuBackdrop.addEventListener("click", (event) => {
-  if (event.target === outputMenuBackdrop) {
-    closeOutputMenu();
-  }
-});
-
 barcodeLookupButton.addEventListener("click", async () => {
   const barcode = normalizeBarcode(editForm.elements.barcode.value);
   if (!barcode) {
