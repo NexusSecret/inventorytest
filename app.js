@@ -18,6 +18,7 @@ const sourceUrlInput = document.getElementById("source-url-input");
 const sourceSaveUrlInput = document.getElementById("source-save-url-input");
 const exportJsonButton = document.getElementById("export-json");
 const importJsonButton = document.getElementById("import-json");
+const resetCellDataButton = document.getElementById("reset-cell-data");
 const jsonFileInput = document.getElementById("json-file-input");
 const sourceStatus = document.getElementById("source-status");
 const aisleSelect = document.getElementById("aisle-select");
@@ -1093,6 +1094,21 @@ exportJsonButton.addEventListener("click", () => {
 
 importJsonButton.addEventListener("click", () => {
   jsonFileInput.click();
+});
+
+resetCellDataButton.addEventListener("click", () => {
+  const confirmed = window.confirm("Reset all current cell data (items, labels, lock states) and keep aisles?");
+  if (!confirmed) {
+    return;
+  }
+
+  inventoryItems.length = 0;
+  cellModes.clear();
+  cellLabels.clear();
+
+  renderGrid();
+  saveState();
+  window.alert("Cell data has been reset. Aisles were kept.");
 });
 
 jsonFileInput.addEventListener("change", async () => {
