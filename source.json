@@ -1,0 +1,25 @@
+{
+  "items": [
+    {
+      "barcode": "1001",
+      "code": "PC-1001",
+      "description": "Test Product 1001",
+      "cartonSize": "12",
+      "avgCost": "2.50"
+    },
+    {
+      "barcode": "1002",
+      "code": "PC-1002",
+      "description": "Test Product 1002",
+      "cartonSize": "24",
+      "avgCost": "3.15"
+    },
+    {
+      "barcode": "2001",
+      "code": "PC-2001",
+      "description": "Test Product 2001",
+      "cartonSize": "6",
+      "avgCost": "9.99"
+    }
+  ]
+}
