@@ -57,6 +57,8 @@ const aisles = [{ id: "default", name: "Inventory" }];
 const cellModes = new Map();
 const cellLabels = new Map();
 const inventoryItems = [];
+let exportTitle = "inventory";
+let exportDateStamp = "";
 const sourceCatalogByBarcode = new Map();
 const sourceCatalogByScanCode = new Map();
 const sourceCatalogByProductCode = new Map();
@@ -738,9 +740,26 @@ function renderAisleSelect() {
   aisleSelect.value = currentAisleId;
 }
 
+function toDateStamp(date = new Date()) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const year = String(date.getFullYear());
+  return `${month}${day}${year}`;
+}
+
+function sanitizeFileTitle(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .toLowerCase();
+}
+
 function serializeState() {
   return {
     version: 1,
+    exportTitle,
+    exportDateStamp,
     currentAisleId,
     aisles: [...aisles],
     inventoryItems: [...inventoryItems],
@@ -753,6 +772,9 @@ function applyState(state) {
   if (!state || !Array.isArray(state.aisles) || !Array.isArray(state.inventoryItems)) {
     return;
   }
+
+  exportTitle = sanitizeFileTitle(state.exportTitle || "inventory") || "inventory";
+  exportDateStamp = /^\d{8}$/.test(state.exportDateStamp || "") ? state.exportDateStamp : "";
 
   aisles.length = 0;
   state.aisles.forEach((aisle) => aisles.push(aisle));
@@ -998,7 +1020,9 @@ exportCsvButton.addEventListener("click", () => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "inventory-all-aisles.csv";
+  const safeTitle = sanitizeFileTitle(exportTitle) || "inventory";
+  const suffix = exportDateStamp || toDateStamp();
+  link.download = `${safeTitle}_${suffix}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 });
@@ -1155,13 +1179,21 @@ resetCellDataButton.addEventListener("click", () => {
     return;
   }
 
+  const enteredTitle = window.prompt("Enter spreadsheet title for export filename:", exportTitle || "inventory")?.trim();
+  if (!enteredTitle) {
+    window.alert("Reset canceled: title is required.");
+    return;
+  }
+
   inventoryItems.length = 0;
   cellModes.clear();
   cellLabels.clear();
+  exportTitle = sanitizeFileTitle(enteredTitle) || "inventory";
+  exportDateStamp = toDateStamp();
 
   renderGrid();
   saveState();
-  window.alert("Cell data has been reset. Aisles were kept.");
+  window.alert(`Cell data has been reset. Aisles were kept. Export filename suffix set to ${exportDateStamp}.`);
 });
 
 jsonFileInput.addEventListener("change", async () => {
