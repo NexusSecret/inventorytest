@@ -289,8 +289,15 @@ h1 {
   gap: 6px;
 }
 
+.date-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
 #barcode-lookup,
-#code-lookup {
+#code-lookup,
+#pick-date {
   border: 1px solid #b9c6da;
   border-radius: 6px;
   background: #fff;

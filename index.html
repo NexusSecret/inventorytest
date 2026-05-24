@@ -48,7 +48,13 @@
           <label>Carton <input name="carton" type="number" min="0" step="1" inputmode="numeric" /></label>
           <label>Single <input name="single" type="number" min="0" step="1" inputmode="numeric" /></label>
           <label>Carton Size <input name="cartonSize" type="number" min="0" step="1" inputmode="numeric" /></label>
-          <label>Date <input type="date" name="date" /></label>
+          <label>Date
+            <div class="date-input-row">
+              <input name="date" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" />
+              <button id="pick-date" type="button">📅</button>
+              <input id="native-date-picker" type="date" hidden />
+            </div>
+          </label>
           <label>Notes <textarea name="notes" rows="3"></textarea></label>
           <div class="modal-actions">
             <button type="submit" id="save-item">Add Item</button>

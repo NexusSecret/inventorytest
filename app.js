@@ -41,6 +41,8 @@ const closeEditTopButton = document.getElementById("close-edit-top");
 const closeViewTopButton = document.getElementById("close-view-top");
 const barcodeLookupButton = document.getElementById("barcode-lookup");
 const codeLookupButton = document.getElementById("code-lookup");
+const pickDateButton = document.getElementById("pick-date");
+const nativeDatePicker = document.getElementById("native-date-picker");
 const sourceMenuBackdrop = document.getElementById("source-menu-backdrop");
 const closeSourceMenuButton = document.getElementById("close-source-menu");
 const closeSourceMenuTopButton = document.getElementById("close-source-menu-top");
@@ -456,6 +458,17 @@ async function notifySourceCatalogStatusOnStartup() {
 
 function normalizeNumericInput(value) {
   return String(value ?? "").replace(/\D+/g, "");
+}
+
+function normalizeDateInput(value) {
+  const digits = String(value ?? "").replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) {
+    return digits;
+  }
+  if (digits.length <= 6) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
 }
 
 function attachNumericInputGuards() {
@@ -1169,6 +1182,29 @@ jsonFileInput.addEventListener("change", async () => {
 });
 
 attachNumericInputGuards();
+editForm.elements.date.addEventListener("input", () => {
+  editForm.elements.date.value = normalizeDateInput(editForm.elements.date.value);
+});
+
+pickDateButton.addEventListener("click", () => {
+  const currentValue = editForm.elements.date.value?.trim() || "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(currentValue)) {
+    nativeDatePicker.value = currentValue;
+  }
+
+  if (typeof nativeDatePicker.showPicker === "function") {
+    nativeDatePicker.showPicker();
+  } else {
+    nativeDatePicker.click();
+  }
+});
+
+nativeDatePicker.addEventListener("change", () => {
+  if (nativeDatePicker.value) {
+    editForm.elements.date.value = nativeDatePicker.value;
+  }
+});
+
 const savedSourceUrl = localStorage.getItem(SOURCE_URL_KEY);
 if (sourceUrlInput && savedSourceUrl) {
   sourceUrlInput.value = savedSourceUrl;
