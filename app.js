@@ -40,6 +40,7 @@ const closeViewButton = document.getElementById("close-view");
 const closeEditTopButton = document.getElementById("close-edit-top");
 const closeViewTopButton = document.getElementById("close-view-top");
 const barcodeLookupButton = document.getElementById("barcode-lookup");
+const codeLookupButton = document.getElementById("code-lookup");
 const sourceMenuBackdrop = document.getElementById("source-menu-backdrop");
 const closeSourceMenuButton = document.getElementById("close-source-menu");
 const closeSourceMenuTopButton = document.getElementById("close-source-menu-top");
@@ -56,6 +57,7 @@ const cellLabels = new Map();
 const inventoryItems = [];
 const sourceCatalogByBarcode = new Map();
 const sourceCatalogByScanCode = new Map();
+const sourceCatalogByProductCode = new Map();
 
 const numericFieldNames = ["carton", "single", "cartonSize"];
 
@@ -182,6 +184,7 @@ function findColumnIndex(header, candidates) {
 function parseSourceCatalogCsv(text) {
   sourceCatalogByBarcode.clear();
   sourceCatalogByScanCode.clear();
+  sourceCatalogByProductCode.clear();
   const rows = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
   if (rows.length < 2) {
     return 0;
@@ -220,6 +223,9 @@ function parseSourceCatalogCsv(text) {
 
     sourceCatalogByBarcode.set(canonicalBarcode, entry);
     sourceCatalogByScanCode.set(canonicalBarcode, entry);
+    if (entry.code) {
+      sourceCatalogByProductCode.set(entry.code.toUpperCase(), entry);
+    }
     if (outerBarcode) {
       sourceCatalogByScanCode.set(outerBarcode, entry);
     }
@@ -231,6 +237,7 @@ function parseSourceCatalogCsv(text) {
 function parseSourceCatalogJson(text) {
   sourceCatalogByBarcode.clear();
   sourceCatalogByScanCode.clear();
+  sourceCatalogByProductCode.clear();
   const parsed = JSON.parse(text);
   const entries = Array.isArray(parsed)
     ? parsed
@@ -264,6 +271,9 @@ function parseSourceCatalogJson(text) {
     };
     sourceCatalogByBarcode.set(canonicalBarcode, parsedEntry);
     sourceCatalogByScanCode.set(canonicalBarcode, parsedEntry);
+    if (parsedEntry.code) {
+      sourceCatalogByProductCode.set(parsedEntry.code.toUpperCase(), parsedEntry);
+    }
     if (outerBarcode) {
       sourceCatalogByScanCode.set(outerBarcode, parsedEntry);
     }
@@ -884,6 +894,7 @@ barcodeLookupButton.addEventListener("click", async () => {
     const newEntry = { barcode, outerBarcode: "", code, description, cartonSize, avgCost };
     sourceCatalogByBarcode.set(barcode, newEntry);
     sourceCatalogByScanCode.set(barcode, newEntry);
+    sourceCatalogByProductCode.set(code.toUpperCase(), newEntry);
     updateSourceStatus(true);
     const saveResult = await persistUpdatedSourceCatalog();
     if (saveResult.mode === "remote-saved") {
@@ -901,6 +912,30 @@ barcodeLookupButton.addEventListener("click", async () => {
   editForm.elements.code.value = match.code || editForm.elements.code.value;
   editForm.elements.description.value = match.description || editForm.elements.description.value;
   editForm.elements.cartonSize.value = match.cartonSize || editForm.elements.cartonSize.value;
+  editForm.elements.avgCost.value = match.avgCost || editForm.elements.avgCost.value;
+});
+
+codeLookupButton.addEventListener("click", async () => {
+  const productCode = editForm.elements.code.value?.trim().toUpperCase() || "";
+  if (!productCode) {
+    window.alert("Enter a product code first.");
+    return;
+  }
+
+  let match = sourceCatalogByProductCode.get(productCode);
+  if (!match) {
+    await loadSourceCatalog();
+    match = sourceCatalogByProductCode.get(productCode);
+  }
+
+  if (!match) {
+    window.alert("Product code not found in source catalog.");
+    return;
+  }
+
+  editForm.elements.cartonSize.value = match.cartonSize || editForm.elements.cartonSize.value;
+  editForm.elements.barcode.value = match.barcode || editForm.elements.barcode.value;
+  editForm.elements.description.value = match.description || editForm.elements.description.value;
   editForm.elements.avgCost.value = match.avgCost || editForm.elements.avgCost.value;
 });
 

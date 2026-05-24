@@ -289,7 +289,8 @@ h1 {
   gap: 6px;
 }
 
-#barcode-lookup {
+#barcode-lookup,
+#code-lookup {
   border: 1px solid #b9c6da;
   border-radius: 6px;
   background: #fff;
