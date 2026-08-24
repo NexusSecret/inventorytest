@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Compile inventory CSV files into a carton-ready item list." />
+    <title>Carton Compiler</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Manrope:wght@700;800&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Carton Compiler home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="m4 7 8-4 8 4-8 4-8-4Zm0 0v10l8 4m8-14v10l-8 4m0-10v10" /></svg>
+        </span>
+        <span>Carton <strong>Compiler</strong></span>
+      </a>
+      <span class="privacy"><span class="status-dot"></span> Your data stays in your browser</span>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow">INVENTORY WORKSPACE</div>
+        <h1>Turn scattered inventory<br />into one <span>clear list.</span></h1>
+        <p>Upload your CSV files. We'll combine matching items, total the quantities, and calculate cartons using your stored carton sizes.</p>
+      </section>
+
+      <section class="workspace" aria-label="CSV compiler">
+        <div class="step-heading">
+          <span class="step-number">1</span>
+          <div><h2>Add inventory files</h2><p>Select every CSV you want to include in this run.</p></div>
+        </div>
+
+        <label class="drop-zone" id="dropZone">
+          <input id="fileInput" type="file" accept=".csv,text/csv" multiple />
+          <span class="upload-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" /></svg>
+          </span>
+          <strong>Drop CSV files here</strong>
+          <span>or <em>browse your computer</em></span>
+          <small>Multiple files supported · CSV only</small>
+        </label>
+
+        <div id="fileList" class="file-list" aria-live="polite"></div>
+        <div id="message" class="message" role="alert" hidden></div>
+
+        <div class="actions">
+          <button id="clearButton" class="button secondary" type="button" disabled>Clear all</button>
+          <button id="compileButton" class="button primary" type="button" disabled>
+            Compile inventory
+            <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+          </button>
+        </div>
+      </section>
+
+      <section id="results" class="results" hidden aria-labelledby="resultsTitle">
+        <div class="results-header">
+          <div class="step-heading">
+            <span class="step-number complete">✓</span>
+            <div><h2 id="resultsTitle">Compiled inventory</h2><p id="resultsSubtitle"></p></div>
+          </div>
+          <button id="downloadButton" class="button secondary download" type="button">
+            <svg viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14" /></svg>
+            Download CSV
+          </button>
+        </div>
+        <div class="summary-grid">
+          <div><span>UNIQUE ITEMS</span><strong id="itemCount">0</strong></div>
+          <div><span>TOTAL UNITS</span><strong id="unitCount">0</strong></div>
+          <div><span>CARTONS NEEDED</span><strong id="cartonCount">0</strong></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Item number</th><th>Description</th><th class="numeric">Total units</th><th class="numeric">Carton size</th><th class="numeric">Cartons needed</th><th class="numeric">Loose units</th></tr></thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="how-it-works">
+        <h2>Simple in. Useful out.</h2>
+        <div class="process-grid">
+          <div><span>01</span><h3>Upload your files</h3><p>Add exports from your inventory system, locations, or orders.</p></div>
+          <div><span>02</span><h3>We match &amp; total</h3><p>Items with the same item number are grouped and their quantities added.</p></div>
+          <div><span>03</span><h3>Get a carton-ready list</h3><p>Carton sizes from your CSV are used to calculate exactly what you need.</p></div>
+        </div>
+      </section>
+    </main>
+    <footer><span>Carton Compiler</span><span>Built for faster inventory workflows.</span></footer>
+    <script src="app.js"></script>
+  </body>
+</html>
