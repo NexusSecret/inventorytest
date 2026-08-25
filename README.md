@@ -46,7 +46,8 @@ is performed entirely in the browser and uploaded data is not sent anywhere.
 
 CSV imports automatically detect comma, semicolon, or tab delimiters, Excel `sep=`
 hints, UTF-8/UTF-16 encoding, and up to 14 informational rows before the actual
-column header.
+column header. Header matching is case-insensitive, and column positions do not
+matter: `NAME`, `CODE`, and `QUANTITY` are recognized wherever they appear.
 
 In the compiled output, `Code` becomes `Product Code` and `Name` becomes
 `Description`. Quantity is divided by the stored carton size: complete cases are

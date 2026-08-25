@@ -46,7 +46,10 @@ function parseCSV(rawText) {
 }
 
 const normalize = value => value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-const cleanNumber = value => Number(String(value || "").replace(/[$,\s]/g, ""));
+const cleanNumber = value => {
+  const cleaned = String(value ?? "").replace(/[$,\s]/g, "");
+  return cleaned === "" ? Number.NaN : Number(cleaned);
+};
 const formatNumber = value => new Intl.NumberFormat().format(value);
 
 function decodeCSV(buffer) {
@@ -132,7 +135,9 @@ async function loadInventorySource() {
 
 function identifyColumns(headers) {
   const normalized = headers.map(normalize); const found = {};
-  Object.entries(fieldAliases).forEach(([field, aliases]) => { found[field] = normalized.findIndex(header => aliases.includes(header)); });
+  Object.entries(fieldAliases).forEach(([field, aliases]) => {
+    found[field] = aliases.map(alias => normalized.indexOf(alias)).find(index => index >= 0) ?? -1;
+  });
   return found;
 }
 
@@ -157,7 +162,7 @@ function showMessage(message) { elements.message.textContent = message; elements
 function hideMessage() { elements.message.hidden = true; }
 
 async function compileFiles() {
-  const items = new Map(); const cartonLookup = new Map(); const errors = []; const warnings = []; const parsedFiles = [];
+  const items = new Map(); const cartonLookup = new Map(); const errors = []; const warnings = []; const parsedFiles = []; const diagnostics = [];
   state.sourceItems.forEach((item, code) => cartonLookup.set(code, item.cartonCount));
   for (const file of state.files) {
     const rows = parseCSV(decodeCSV(await file.arrayBuffer()));
@@ -167,6 +172,7 @@ async function compileFiles() {
     if (!columns || (columns.quantity < 0 && columns.carton < 0)) {
       errors.push(`${file.name} needs a product code and either a quantity or carton size column.`); continue;
     }
+    diagnostics.push({ file:file.name, rows:header.dataRows.length, codeColumn:rows[rows.length - header.dataRows.length - 1][columns.item], quantityColumn:columns.quantity >= 0 ? rows[rows.length - header.dataRows.length - 1][columns.quantity] : "" });
     parsedFiles.push({ file, rows:header.dataRows, columns });
     if (columns.carton >= 0) header.dataRows.forEach(row => {
       const itemNumber = (row[columns.item] || "").trim();
@@ -176,13 +182,16 @@ async function compileFiles() {
     });
   }
   if (errors.length) { showMessage(errors.join(" ")); return; }
+  let rowsWithCodes = 0; let rowsWithQuantities = 0;
   parsedFiles.forEach(({ file, rows, columns }) => {
     if (columns.quantity < 0) return;
     rows.forEach((row, rowIndex) => {
       const itemNumber = (row[columns.item] || "").trim();
       if (!itemNumber) return;
+      rowsWithCodes += 1;
       const quantity = cleanNumber(row[columns.quantity]);
       if (!Number.isFinite(quantity)) { warnings.push(`${file.name}, row ${rowIndex + 2}: invalid quantity.`); return; }
+      rowsWithQuantities += 1;
       const cartonValue = columns.carton >= 0 ? cleanNumber(row[columns.carton]) : 0;
       const cartonSize = Number.isFinite(cartonValue) && cartonValue > 0 ? cartonValue : (cartonLookup.get(itemNumber.toLowerCase()) || 0);
       const sourceItem = state.sourceItems.get(itemNumber.toLowerCase());
@@ -198,7 +207,11 @@ async function compileFiles() {
     });
   });
   state.compiled = [...items.values()].sort((a, b) => a.itemNumber.localeCompare(b.itemNumber, undefined, { numeric:true }));
-  if (!state.compiled.length) { showMessage("No valid inventory items were found in these files."); return; }
+  if (!state.compiled.length) {
+    const detected = diagnostics.map(file => `${file.file}: detected ${file.codeColumn || "no code"}/${file.quantityColumn || "no quantity"} headers and ${file.rows} data rows`).join("; ");
+    showMessage(`No items could be compiled. ${detected}. Rows containing a product code: ${rowsWithCodes}; rows containing a valid quantity: ${rowsWithQuantities}.`);
+    return;
+  }
   renderResults();
   showMessage(warnings.length ? `${warnings.length} row(s) with invalid quantities were skipped.` : "");
   if (!warnings.length) hideMessage();

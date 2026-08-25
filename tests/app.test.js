@@ -37,6 +37,13 @@ const sourceMap = context.sourceRowsToMap(source);
 assert.equal(sourceMap.get("a-1").cartonCount, 12);
 assert.equal(sourceMap.get("a-1").description, "Widget");
 
+const wideUppercase = context.parseCSV("SHEET_TITLE,ORDER_ID,WEEK_BEGIN,NAME,CCC_NAME,CCC_TYPE,SIZE,UNITS,DAY,CODE,QUANTITY,Pantry,Opt In(true)/Extra(false)\nOrder,42,2026-08-25,Widget,CCC,A,Large,Each,Mon,A-1,25,true,false\n");
+const wideHeader = context.findHeader(wideUppercase, ["item", "quantity"]);
+assert.equal(wideHeader.columns.item, 9);
+assert.equal(wideHeader.columns.description, 3);
+assert.equal(wideHeader.columns.quantity, 10);
+assert.deepEqual(Array.from(wideHeader.dataRows[0].slice(9, 11)), ["A-1", "25"]);
+
 const utf16 = Buffer.from("Code,Name,Quantity\nA-1,Widget,25\n", "utf16le");
 const bomBuffer = Buffer.concat([Buffer.from([0xff, 0xfe]), utf16]);
 assert.match(context.decodeCSV(bomBuffer), /Code,Name,Quantity/);
