@@ -20,6 +20,10 @@ h1 span { color:var(--green); }
 .step-number.complete { background:var(--mint); color:var(--green); }
 .step-heading h2 { font-size:20px; letter-spacing:-.02em; }
 .step-heading p { margin:3px 0 0; color:var(--muted); font-size:14px; }
+.source-status { display:flex; align-items:center; gap:11px; margin-top:22px; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:#f8fbf9; }
+.source-status .source-icon { width:29px; height:29px; display:grid; place-items:center; border-radius:50%; background:var(--mint); color:var(--green); font-weight:700; }
+.source-status strong,.source-status small { display:block; }.source-status strong { font-size:13px; }.source-status small { color:var(--muted); font-size:11px; margin-top:2px; }
+.source-status.error { background:#fff1eb; border-color:#f1d6cc; }.source-status.error .source-icon { background:#fae0d6; color:#a64931; }
 .drop-zone { margin-top:27px; min-height:250px; border:1.5px dashed #aebfb5; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:.2s; background:#fbfdfb; }
 .drop-zone:hover,.drop-zone.dragging { border-color:var(--green); background:#f3faf6; transform:translateY(-1px); }
 .drop-zone input { position:absolute; opacity:0; pointer-events:none; }

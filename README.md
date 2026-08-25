@@ -25,11 +25,18 @@ The compiler automatically recognizes common alternatives for these fields:
 | Quantity | `Quantity`, `Qty`, `Units`, `Order Qty` |
 | Carton size | `Carton Size`, `Case Pack`, `Units Per Carton`, `Pack Size` |
 
-Quantity files must include a product code and quantity. A separate reference CSV
-containing product codes and carton sizes is also supported; the compiler uses the
-product code to look up the correct carton size. Missing matches are clearly flagged
-instead of being guessed. CSV processing is performed entirely in the browser and
-uploaded data is not sent anywhere.
+The inventory reference must be named `source.json` or `source.csv` and live in the
+same folder as `index.html`. The app automatically tries `source.json` first and then
+`source.csv`. The source columns are `Product Code`, `Description`, `Carton`,
+`Single`, and `Carton Count`; `Carton Count` is the number of units in a full carton.
+The included `source.csv` is a header template that can be replaced with inventory
+data. For JSON, use an array of objects with the same property names (or an object
+with that array under `items`).
+
+Uploaded quantity files must include `Code` and `Quantity`; `Name` is optional. The
+compiler maps `Code` to the source `Product Code`, uses the source description and
+carton count, and clearly flags product codes with no source match. CSV processing
+is performed entirely in the browser and uploaded data is not sent anywhere.
 
 In the compiled output, `Code` becomes `Product Code` and `Name` becomes
 `Description`. Quantity is divided by the stored carton size: complete cases are

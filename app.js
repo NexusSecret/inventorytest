@@ -1,10 +1,10 @@
-const state = { files: [], compiled: [] };
+const state = { files: [], compiled: [], sourceItems: new Map(), sourceFile: "" };
 
 const fieldAliases = {
   item: ["productcode", "code", "itemnumber", "itemno", "sku", "item", "productid", "partnumber"],
   description: ["description", "itemdescription", "productname", "name"],
   quantity: ["quantity", "qty", "units", "orderqty", "orderquantity", "unitcount"],
-  carton: ["cartonsize", "casepack", "unitspercarton", "unitspercase", "packsize", "casequantity", "caseqty"]
+  carton: ["cartoncount", "cartonsize", "casepack", "unitspercarton", "unitspercase", "packsize", "casequantity", "caseqty"]
 };
 
 const elements = {
@@ -34,6 +34,55 @@ const normalize = value => value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 const cleanNumber = value => Number(String(value || "").replace(/[$,\s]/g, ""));
 const formatNumber = value => new Intl.NumberFormat().format(value);
 
+function sourceRowsToMap(rows) {
+  if (rows.length < 2) return new Map();
+  const columns = identifyColumns(rows[0]);
+  if (columns.item < 0 || columns.carton < 0) throw new Error("The source needs Product Code and Carton Count columns.");
+  const source = new Map();
+  rows.slice(1).forEach(row => {
+    const productCode = (row[columns.item] || "").trim();
+    const cartonCount = cleanNumber(row[columns.carton]);
+    if (!productCode || !Number.isFinite(cartonCount) || cartonCount <= 0) return;
+    source.set(productCode.toLowerCase(), {
+      productCode,
+      description:columns.description >= 0 ? (row[columns.description] || "").trim() : "",
+      cartonCount
+    });
+  });
+  return source;
+}
+
+async function loadInventorySource() {
+  const status = document.querySelector("#sourceStatus");
+  const attempts = ["source.json", "source.csv"];
+  for (const filename of attempts) {
+    try {
+      const response = await fetch(filename, { cache:"no-store" });
+      if (!response.ok) continue;
+      let rows;
+      if (filename.endsWith(".json")) {
+        const data = await response.json(); const records = Array.isArray(data) ? data : data.items;
+        if (!Array.isArray(records)) throw new Error("source.json must be an array or contain an items array.");
+        const headers = ["Product Code", "Description", "Carton", "Single", "Carton Count"];
+        rows = [headers, ...records.map(record => {
+          const normalizedRecord = Object.fromEntries(Object.entries(record).map(([key, value]) => [normalize(key), value]));
+          return headers.map(header => record[header] ?? normalizedRecord[normalize(header)] ?? "");
+        })];
+      } else rows = parseCSV(await response.text());
+      state.sourceItems = sourceRowsToMap(rows); state.sourceFile = filename;
+      status.classList.remove("error"); status.querySelector(".source-icon").textContent = "✓";
+      status.querySelector("strong").textContent = `${filename} connected`;
+      status.querySelector("small").textContent = `${state.sourceItems.size} product${state.sourceItems.size === 1 ? "" : "s"} available for carton lookup`;
+      return;
+    } catch (error) {
+      status.dataset.error = error.message;
+    }
+  }
+  status.classList.add("error"); status.querySelector(".source-icon").textContent = "!";
+  status.querySelector("strong").textContent = "Inventory source unavailable";
+  status.querySelector("small").textContent = status.dataset.error || "Add source.json or source.csv beside index.html, then refresh.";
+}
+
 function identifyColumns(headers) {
   const normalized = headers.map(normalize); const found = {};
   Object.entries(fieldAliases).forEach(([field, aliases]) => { found[field] = normalized.findIndex(header => aliases.includes(header)); });
@@ -62,6 +111,7 @@ function hideMessage() { elements.message.hidden = true; }
 
 async function compileFiles() {
   const items = new Map(); const cartonLookup = new Map(); const errors = []; const warnings = []; const parsedFiles = [];
+  state.sourceItems.forEach((item, code) => cartonLookup.set(code, item.cartonCount));
   for (const file of state.files) {
     const rows = parseCSV(await file.text());
     if (rows.length < 2) { errors.push(`${file.name} has no inventory rows.`); continue; }
@@ -87,7 +137,9 @@ async function compileFiles() {
       if (!Number.isFinite(quantity)) { warnings.push(`${file.name}, row ${rowIndex + 2}: invalid quantity.`); return; }
       const cartonValue = columns.carton >= 0 ? cleanNumber(row[columns.carton]) : 0;
       const cartonSize = Number.isFinite(cartonValue) && cartonValue > 0 ? cartonValue : (cartonLookup.get(itemNumber.toLowerCase()) || 0);
-      const description = columns.description >= 0 ? (row[columns.description] || "").trim() : "";
+      const sourceItem = state.sourceItems.get(itemNumber.toLowerCase());
+      const uploadedDescription = columns.description >= 0 ? (row[columns.description] || "").trim() : "";
+      const description = sourceItem?.description || uploadedDescription;
       const key = itemNumber.toLowerCase(); const existing = items.get(key);
       if (existing) {
         existing.quantity += quantity;
@@ -136,3 +188,4 @@ elements.fileList.addEventListener("click", event => { const button = event.targ
 elements.clear.addEventListener("click", () => { state.files = []; state.compiled = []; elements.results.hidden = true; hideMessage(); renderFiles(); });
 elements.compile.addEventListener("click", compileFiles);
 document.querySelector("#downloadButton").addEventListener("click", downloadResults);
+loadInventorySource();

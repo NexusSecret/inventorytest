@@ -34,6 +34,11 @@
           <div><h2>Add inventory files</h2><p>Select every CSV you want to include in this run.</p></div>
         </div>
 
+        <div id="sourceStatus" class="source-status" aria-live="polite">
+          <span class="source-icon">↻</span>
+          <div><strong>Loading inventory source…</strong><small>Looking for source.json or source.csv beside index.html</small></div>
+        </div>
+
         <label class="drop-zone" id="dropZone">
           <input id="fileInput" type="file" accept=".csv,text/csv" multiple />
           <span class="upload-icon" aria-hidden="true">
