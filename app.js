@@ -52,27 +52,43 @@ function sourceRowsToMap(rows) {
   return source;
 }
 
+function jsonToRows(data) {
+  const records = Array.isArray(data) ? data : data.items;
+  if (!Array.isArray(records)) throw new Error("source.json must be an array or contain an items array.");
+  const headers = ["Product Code", "Description", "Carton", "Single", "Carton Size"];
+  return [headers, ...records.map(record => {
+    const normalizedRecord = Object.fromEntries(Object.entries(record).map(([key, value]) => [normalize(key), value]));
+    return headers.map(header => record[header] ?? normalizedRecord[normalize(header)] ?? "");
+  })];
+}
+
+function setSourceStatus(filename) {
+  const status = document.querySelector("#sourceStatus");
+  status.classList.remove("error"); status.querySelector(".source-icon").textContent = "✓";
+  status.querySelector("strong").textContent = `${filename} connected`;
+  status.querySelector("small").textContent = `${state.sourceItems.size} product${state.sourceItems.size === 1 ? "" : "s"} available for carton lookup`;
+}
+
+async function useSource(filename, text) {
+  const rows = filename.toLowerCase().endsWith(".json") ? jsonToRows(JSON.parse(text)) : parseCSV(text);
+  state.sourceItems = sourceRowsToMap(rows); state.sourceFile = filename;
+  setSourceStatus(filename);
+}
+
 async function loadInventorySource() {
   const status = document.querySelector("#sourceStatus");
+  if (window.location.protocol === "file:") {
+    status.classList.add("error"); status.querySelector(".source-icon").textContent = "!";
+    status.querySelector("strong").textContent = "Choose your inventory source";
+    status.querySelector("small").textContent = "Browsers cannot auto-load nearby files when index.html is opened directly.";
+    return;
+  }
   const attempts = ["source.json", "source.csv"];
   for (const filename of attempts) {
     try {
       const response = await fetch(filename, { cache:"no-store" });
       if (!response.ok) continue;
-      let rows;
-      if (filename.endsWith(".json")) {
-        const data = await response.json(); const records = Array.isArray(data) ? data : data.items;
-        if (!Array.isArray(records)) throw new Error("source.json must be an array or contain an items array.");
-        const headers = ["Product Code", "Description", "Carton", "Single", "Carton Count"];
-        rows = [headers, ...records.map(record => {
-          const normalizedRecord = Object.fromEntries(Object.entries(record).map(([key, value]) => [normalize(key), value]));
-          return headers.map(header => record[header] ?? normalizedRecord[normalize(header)] ?? "");
-        })];
-      } else rows = parseCSV(await response.text());
-      state.sourceItems = sourceRowsToMap(rows); state.sourceFile = filename;
-      status.classList.remove("error"); status.querySelector(".source-icon").textContent = "✓";
-      status.querySelector("strong").textContent = `${filename} connected`;
-      status.querySelector("small").textContent = `${state.sourceItems.size} product${state.sourceItems.size === 1 ? "" : "s"} available for carton lookup`;
+      await useSource(filename, await response.text());
       return;
     } catch (error) {
       status.dataset.error = error.message;
@@ -188,4 +204,11 @@ elements.fileList.addEventListener("click", event => { const button = event.targ
 elements.clear.addEventListener("click", () => { state.files = []; state.compiled = []; elements.results.hidden = true; hideMessage(); renderFiles(); });
 elements.compile.addEventListener("click", compileFiles);
 document.querySelector("#downloadButton").addEventListener("click", downloadResults);
+document.querySelector("#sourceInput").addEventListener("change", async event => {
+  const [file] = event.target.files;
+  if (!file) return;
+  try { await useSource(file.name, await file.text()); hideMessage(); }
+  catch (error) { showMessage(`Could not read ${file.name}: ${error.message}`); }
+  event.target.value = "";
+});
 loadInventorySource();

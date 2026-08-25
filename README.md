@@ -28,10 +28,16 @@ The compiler automatically recognizes common alternatives for these fields:
 The inventory reference must be named `source.json` or `source.csv` and live in the
 same folder as `index.html`. The app automatically tries `source.json` first and then
 `source.csv`. The source columns are `Product Code`, `Description`, `Carton`,
-`Single`, and `Carton Count`; `Carton Count` is the number of units in a full carton.
+`Single`, and `Carton Size`; `Carton Size` (also accepted as `Carton Count`) is the
+number of units in a full carton.
 The included `source.csv` is a header template that can be replaced with inventory
 data. For JSON, use an array of objects with the same property names (or an object
 with that array under `items`).
+
+When the page is opened directly from the filesystem (`file://`), browser security
+prevents JavaScript from automatically reading another local file. In that case, use
+the **Choose source** button shown in the app. Automatic loading works when the app
+is served with the local server command above.
 
 Uploaded quantity files must include `Code` and `Quantity`; `Name` is optional. The
 compiler maps `Code` to the source `Product Code`, uses the source description and
