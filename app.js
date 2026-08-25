@@ -14,13 +14,28 @@ const elements = {
   results: document.querySelector("#results"), body: document.querySelector("#resultsBody")
 };
 
-function parseCSV(text) {
+function detectDelimiter(text) {
+  const sample = text.split(/\r?\n/).filter(line => line.trim()).slice(0, 5).join("\n");
+  const counts = [[",", 0], [";", 0], ["\t", 0]]; let quoted = false;
+  for (const char of sample) {
+    if (char === '"') quoted = !quoted;
+    else if (!quoted) counts.forEach(entry => { if (char === entry[0]) entry[1] += 1; });
+  }
+  counts.sort((a, b) => b[1] - a[1]);
+  return counts[0][1] ? counts[0][0] : ",";
+}
+
+function parseCSV(rawText) {
+  let text = rawText.replace(/^\uFEFF/, "");
+  const separatorHint = text.match(/^sep=(.)\s*(?:\r?\n)/i);
+  const delimiter = separatorHint?.[1] || detectDelimiter(text);
+  if (separatorHint) text = text.slice(separatorHint[0].length);
   const rows = []; let row = []; let value = ""; let quoted = false;
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index];
     if (char === '"') {
       if (quoted && text[index + 1] === '"') { value += '"'; index += 1; } else quoted = !quoted;
-    } else if (char === "," && !quoted) { row.push(value); value = ""; }
+    } else if (char === delimiter && !quoted) { row.push(value); value = ""; }
     else if ((char === "\n" || char === "\r") && !quoted) {
       if (char === "\r" && text[index + 1] === "\n") index += 1;
       row.push(value); if (row.some(cell => cell.trim())) rows.push(row); row = []; value = "";
@@ -34,12 +49,28 @@ const normalize = value => value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 const cleanNumber = value => Number(String(value || "").replace(/[$,\s]/g, ""));
 const formatNumber = value => new Intl.NumberFormat().format(value);
 
+function decodeCSV(buffer) {
+  const bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(buffer);
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder("utf-16be").decode(buffer);
+  const zeroes = bytes.slice(0, 100).filter(byte => byte === 0).length;
+  return new TextDecoder(zeroes > 10 ? "utf-16le" : "utf-8").decode(buffer);
+}
+
+function findHeader(rows, requiredFields) {
+  for (let index = 0; index < Math.min(rows.length, 15); index += 1) {
+    const columns = identifyColumns(rows[index]);
+    if (requiredFields.every(field => columns[field] >= 0)) return { columns, dataRows:rows.slice(index + 1) };
+  }
+  return null;
+}
+
 function sourceRowsToMap(rows) {
-  if (rows.length < 2) return new Map();
-  const columns = identifyColumns(rows[0]);
-  if (columns.item < 0 || columns.carton < 0) throw new Error("The source needs Product Code and Carton Count columns.");
+  const header = findHeader(rows, ["item", "carton"]);
+  if (!header) throw new Error("The source needs Product Code and Carton Size columns.");
+  const { columns, dataRows } = header;
   const source = new Map();
-  rows.slice(1).forEach(row => {
+  dataRows.forEach(row => {
     const productCode = (row[columns.item] || "").trim();
     const cartonCount = cleanNumber(row[columns.carton]);
     if (!productCode || !Number.isFinite(cartonCount) || cartonCount <= 0) return;
@@ -88,7 +119,7 @@ async function loadInventorySource() {
     try {
       const response = await fetch(filename, { cache:"no-store" });
       if (!response.ok) continue;
-      await useSource(filename, await response.text());
+      await useSource(filename, decodeCSV(await response.arrayBuffer()));
       return;
     } catch (error) {
       status.dataset.error = error.message;
@@ -129,14 +160,15 @@ async function compileFiles() {
   const items = new Map(); const cartonLookup = new Map(); const errors = []; const warnings = []; const parsedFiles = [];
   state.sourceItems.forEach((item, code) => cartonLookup.set(code, item.cartonCount));
   for (const file of state.files) {
-    const rows = parseCSV(await file.text());
+    const rows = parseCSV(decodeCSV(await file.arrayBuffer()));
     if (rows.length < 2) { errors.push(`${file.name} has no inventory rows.`); continue; }
-    const columns = identifyColumns(rows[0]);
-    if (columns.item < 0 || (columns.quantity < 0 && columns.carton < 0)) {
+    const header = findHeader(rows, ["item"]);
+    const columns = header?.columns;
+    if (!columns || (columns.quantity < 0 && columns.carton < 0)) {
       errors.push(`${file.name} needs a product code and either a quantity or carton size column.`); continue;
     }
-    parsedFiles.push({ file, rows:rows.slice(1), columns });
-    if (columns.carton >= 0) rows.slice(1).forEach(row => {
+    parsedFiles.push({ file, rows:header.dataRows, columns });
+    if (columns.carton >= 0) header.dataRows.forEach(row => {
       const itemNumber = (row[columns.item] || "").trim();
       if (!itemNumber) return;
       const cartonValue = cleanNumber(row[columns.carton]);
@@ -207,7 +239,7 @@ document.querySelector("#downloadButton").addEventListener("click", downloadResu
 document.querySelector("#sourceInput").addEventListener("change", async event => {
   const [file] = event.target.files;
   if (!file) return;
-  try { await useSource(file.name, await file.text()); hideMessage(); }
+  try { await useSource(file.name, decodeCSV(await file.arrayBuffer())); hideMessage(); }
   catch (error) { showMessage(`Could not read ${file.name}: ${error.message}`); }
   event.target.value = "";
 });

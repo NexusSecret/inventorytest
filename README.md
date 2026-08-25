@@ -44,6 +44,10 @@ compiler maps `Code` to the source `Product Code`, uses the source description a
 carton count, and clearly flags product codes with no source match. CSV processing
 is performed entirely in the browser and uploaded data is not sent anywhere.
 
+CSV imports automatically detect comma, semicolon, or tab delimiters, Excel `sep=`
+hints, UTF-8/UTF-16 encoding, and up to 14 informational rows before the actual
+column header.
+
 In the compiled output, `Code` becomes `Product Code` and `Name` becomes
 `Description`. Quantity is divided by the stored carton size: complete cases are
 written to `Carton`, while the remainder is written to `Single` (for example, a
