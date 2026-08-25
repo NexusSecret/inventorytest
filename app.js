@@ -1,7 +1,7 @@
 const state = { files: [], compiled: [] };
 
 const fieldAliases = {
-  item: ["itemnumber", "itemno", "sku", "item", "productcode", "productid", "partnumber"],
+  item: ["productcode", "code", "itemnumber", "itemno", "sku", "item", "productid", "partnumber"],
   description: ["description", "itemdescription", "productname", "name"],
   quantity: ["quantity", "qty", "units", "orderqty", "orderquantity", "unitcount"],
   carton: ["cartonsize", "casepack", "unitspercarton", "unitspercase", "packsize", "casequantity", "caseqty"]
@@ -61,19 +61,32 @@ function showMessage(message) { elements.message.textContent = message; elements
 function hideMessage() { elements.message.hidden = true; }
 
 async function compileFiles() {
-  const items = new Map(); const errors = []; const warnings = [];
+  const items = new Map(); const cartonLookup = new Map(); const errors = []; const warnings = []; const parsedFiles = [];
   for (const file of state.files) {
     const rows = parseCSV(await file.text());
     if (rows.length < 2) { errors.push(`${file.name} has no inventory rows.`); continue; }
     const columns = identifyColumns(rows[0]);
-    if (columns.item < 0 || columns.quantity < 0) { errors.push(`${file.name} needs item number and quantity columns.`); continue; }
-    rows.slice(1).forEach((row, rowIndex) => {
+    if (columns.item < 0 || (columns.quantity < 0 && columns.carton < 0)) {
+      errors.push(`${file.name} needs a product code and either a quantity or carton size column.`); continue;
+    }
+    parsedFiles.push({ file, rows:rows.slice(1), columns });
+    if (columns.carton >= 0) rows.slice(1).forEach(row => {
+      const itemNumber = (row[columns.item] || "").trim();
+      if (!itemNumber) return;
+      const cartonValue = cleanNumber(row[columns.carton]);
+      if (Number.isFinite(cartonValue) && cartonValue > 0) cartonLookup.set(itemNumber.toLowerCase(), cartonValue);
+    });
+  }
+  if (errors.length) { showMessage(errors.join(" ")); return; }
+  parsedFiles.forEach(({ file, rows, columns }) => {
+    if (columns.quantity < 0) return;
+    rows.forEach((row, rowIndex) => {
       const itemNumber = (row[columns.item] || "").trim();
       if (!itemNumber) return;
       const quantity = cleanNumber(row[columns.quantity]);
       if (!Number.isFinite(quantity)) { warnings.push(`${file.name}, row ${rowIndex + 2}: invalid quantity.`); return; }
       const cartonValue = columns.carton >= 0 ? cleanNumber(row[columns.carton]) : 0;
-      const cartonSize = Number.isFinite(cartonValue) && cartonValue > 0 ? cartonValue : 0;
+      const cartonSize = Number.isFinite(cartonValue) && cartonValue > 0 ? cartonValue : (cartonLookup.get(itemNumber.toLowerCase()) || 0);
       const description = columns.description >= 0 ? (row[columns.description] || "").trim() : "";
       const key = itemNumber.toLowerCase(); const existing = items.get(key);
       if (existing) {
@@ -83,8 +96,7 @@ async function compileFiles() {
         else if (cartonSize && existing.cartonSize !== cartonSize) existing.conflict = true;
       } else items.set(key, { itemNumber, description, quantity, cartonSize, conflict:false });
     });
-  }
-  if (errors.length) { showMessage(errors.join(" ")); return; }
+  });
   state.compiled = [...items.values()].sort((a, b) => a.itemNumber.localeCompare(b.itemNumber, undefined, { numeric:true }));
   if (!state.compiled.length) { showMessage("No valid inventory items were found in these files."); return; }
   renderResults();
@@ -94,13 +106,13 @@ async function compileFiles() {
 
 function renderResults() {
   elements.body.innerHTML = state.compiled.map(item => {
-    const cartons = item.cartonSize ? Math.ceil(item.quantity / item.cartonSize) : null;
+    const cartons = item.cartonSize ? Math.floor(item.quantity / item.cartonSize) : null;
     const loose = item.cartonSize ? item.quantity % item.cartonSize : null;
     const cartonTitle = item.conflict ? ' title="Conflicting carton sizes found; the first stored value was used"' : "";
     return `<tr><td><strong>${escapeHTML(item.itemNumber)}</strong></td><td>${escapeHTML(item.description || "—")}</td><td class="numeric">${formatNumber(item.quantity)}</td><td class="numeric${item.cartonSize ? "" : " missing"}"${cartonTitle}>${item.cartonSize ? formatNumber(item.cartonSize) + (item.conflict ? " ⚠" : "") : "Missing"}</td><td class="numeric${cartons === null ? " missing" : ""}">${cartons === null ? "—" : formatNumber(cartons)}</td><td class="numeric">${loose === null ? "—" : formatNumber(loose)}</td></tr>`;
   }).join("");
   const totalUnits = state.compiled.reduce((sum, item) => sum + item.quantity, 0);
-  const totalCartons = state.compiled.reduce((sum, item) => sum + (item.cartonSize ? Math.ceil(item.quantity / item.cartonSize) : 0), 0);
+  const totalCartons = state.compiled.reduce((sum, item) => sum + (item.cartonSize ? Math.floor(item.quantity / item.cartonSize) : 0), 0);
   document.querySelector("#itemCount").textContent = formatNumber(state.compiled.length);
   document.querySelector("#unitCount").textContent = formatNumber(totalUnits);
   document.querySelector("#cartonCount").textContent = formatNumber(totalCartons);
@@ -110,8 +122,8 @@ function renderResults() {
 
 function downloadResults() {
   const quote = value => `"${String(value).replace(/"/g, '""')}"`;
-  const header = ["Item Number", "Description", "Total Units", "Carton Size", "Cartons Needed", "Loose Units"];
-  const lines = state.compiled.map(item => [item.itemNumber, item.description, item.quantity, item.cartonSize || "", item.cartonSize ? Math.ceil(item.quantity / item.cartonSize) : "", item.cartonSize ? item.quantity % item.cartonSize : ""].map(quote).join(","));
+  const header = ["Product Code", "Description", "Quantity", "Carton Size", "Carton", "Single"];
+  const lines = state.compiled.map(item => [item.itemNumber, item.description, item.quantity, item.cartonSize || "", item.cartonSize ? Math.floor(item.quantity / item.cartonSize) : "", item.cartonSize ? item.quantity % item.cartonSize : ""].map(quote).join(","));
   const url = URL.createObjectURL(new Blob([[header.join(","), ...lines].join("\r\n")], { type:"text/csv" }));
   const link = document.createElement("a"); link.href = url; link.download = `compiled-inventory-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url);
 }

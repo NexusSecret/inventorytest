@@ -20,11 +20,18 @@ The compiler automatically recognizes common alternatives for these fields:
 
 | Field | Examples |
 | --- | --- |
-| Item number | `Item Number`, `SKU`, `Item`, `Product Code` |
+| Product code | `Code`, `Product Code`, `Item Number`, `SKU`, `Item` |
 | Description | `Description`, `Item Description`, `Product Name` |
 | Quantity | `Quantity`, `Qty`, `Units`, `Order Qty` |
 | Carton size | `Carton Size`, `Case Pack`, `Units Per Carton`, `Pack Size` |
 
-Every file must include an item number and quantity. Carton size may be blank; the
-result will clearly flag those items instead of guessing a value. CSV processing is
-performed entirely in the browser and uploaded data is not sent anywhere.
+Quantity files must include a product code and quantity. A separate reference CSV
+containing product codes and carton sizes is also supported; the compiler uses the
+product code to look up the correct carton size. Missing matches are clearly flagged
+instead of being guessed. CSV processing is performed entirely in the browser and
+uploaded data is not sent anywhere.
+
+In the compiled output, `Code` becomes `Product Code` and `Name` becomes
+`Description`. Quantity is divided by the stored carton size: complete cases are
+written to `Carton`, while the remainder is written to `Single` (for example, a
+quantity of 25 with a carton size of 12 produces 2 cartons and 1 single).
