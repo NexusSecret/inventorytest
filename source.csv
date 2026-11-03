@@ -1,4 +1,237 @@
-Aisle,Coordinate,Product Code,Barcode,Description,Carton,Carton Size,Single,Total Units,Avg Cost,Total Cost,Date,Notes
-Inventory,I0101,PC-1001,1001,Test Product 1001,4,12,0,48,2.50,120.00,2026-03-26,Lookup test row
-Inventory,I0102,PC-1002,1002,Test Product 1002,2,24,0,48,3.15,151.20,2026-03-26,Lookup test row
-Inventory,I0103,PC-2001,2001,Test Product 2001,1,6,0,6,9.99,59.94,2026-03-26,Lookup test row
+Aisle,Coordinate,Product Code,Barcode,Description,Carton,Carton Size,Single,Total Units,Avg Cost,Total Cost,Date,Notes,OuterBarcode
+,,BK100,,Tropical Muffin,,8,,,,,,,
+,,BK109,9359478002568,"Tropical Banana, Pineapple & Mango Loaf - Freshbake",,12,,,,,,,9359478002629
+,,BK110,9359478002551,High Fibre Pineapple Loaf - FreshBake,,12,,,,,,,9359478002636
+,,BK116,9359478002773,Spinach & Basil Scroll- Freshbake T12B12,,12,,,,,,,9359478002926
+,,BK19,9359478001288,GF VEGAN APPLE CINNAMON MUFFIN 50GM,,60,,,,,,,19359478001285
+,,BK21,9359478001301,GF Vegan Pineapple Muffin 50Gm,,60,,,,,,,19359478001308
+,,BK23,9359478001325,GF Vegan Banana Muffin 50Gm,,60,,,,,,,19359478001322
+,,BK4101,9359478001745,Prebaked Apple Cinnamon Muffin,,8,,,,,,,9359478002018
+,,BK4102,9359478001752,Prebaked Apple Blueberry Muffin,,8,,,,,,,9359478002025
+,,BK4103,9359478001769,Mini Sultana Bread 40g Tray 12 Box 8 - PreBaked,,8,,,,,,,9359478002032
+,,BK4105,9359478001615,Prebaked Wholemeal Anzac Cookie Tray 12 Box 12,,12,,,,,,,9359478001868
+,,BK4106,9359478002049,Prebaked Choc Beetroot Brownie Box 8,,8,,,,,,,9359478002070
+,,BK4107,9359478002056,Prebaked Choc Zucchini Slice,,8,,,,,,,9359478002087
+,,BK4108,9359478001622,Wholemeal Vegetarian Sausage Roll 45g Tray 12 Box 12,,8,,,,,,,9359478001875
+,,BK4109,9359478002582,"Tropical Banana, Pineapple & Mango Loaf - Prebake Box 8",,8,,,,,,,9359478002605
+,,BK4110,9359478002575,High Fibre Pineapple Loaf � Prebake box 8,,8,,,,,,,9359478002612
+,,BK4111,9359478002735,Pumpkin & Carrot Scone,,8,,,,,,,9359478002896
+,,BK4112,9359478002803,Apricot & Coconut Ball t12 box 12,,12,,,,,,,9359478002957
+,,BK4113,9359478002759,Apple Blueberry Ball,,12,,,,,,,9359478002902
+,,BK4114,9359478000762,Tomato & Veg Filled Bun,,8,,,,,,,9359478000779
+,,BK4115,9359478002766,Peach & Mango Muffin t12 box 8,,8,,,,,,,9359478002919
+,,BK4117,9359478002797,Hummingbird Muffin Box 8,,8,,,,,,,9359478002940
+,,BK4118,9359478003688,Zucchini & Corn Pocket,,8,,,,,,,9359478003718
+,,BK450,,Sultana Loaf Box 8 - Cooked,,8,,,,,,,
+,,BK455,9359478001585,High Fibre Blueberry & Apple Loaf - Pre-bake,,8,,,,,,,
+,,BK456,9359478002742,HF Peach Loaf - Prebaked,,8,,,,,,,9359478000755
+,,BK458,,Apple & Cinnamon Loaf - Pre-bake,,8,,,,,,,
+,,BK461,9359478001523,Carrot Bread Box 8 - Cooked,,8,,,,,,,
+,,BK480,9359478001516,Apple Cini Scroll Box 12-CookeD,,8,,,,,,,9359478001516
+,,BK483,9359478001554,Pizza Vegi Scroll Box 12-Cooked,,12,,,,,,,9359478001554
+,,BK484,9359478001677,Prebaked Pineapple Vege Pizza Scroll,,12,,,,,,,9359478002117
+,,BK485,9359478002063,Choc Beetroot & Orange Galaxy Loaf,,8,,,,,,,9359478002094
+,,BK496,9359478001707,Prebaked Date Damper,,8,,,,,,,9359478001974
+,,BK498,9359478001721,Prebaked Mini Banana Bread,,8,,,,,,,9359478001998
+,,BK499,9359478001738,Prebaked Peach Muffin,,8,,,,,,,9359478002001
+,,BK50,9359478001110,Sultana and Oat Box 12,,12,,,,,,,19359478001117
+,,BK55,9359478001165,Blueberry & Apple Loaf Box 12,,12,,,,,,,TBA
+,,BK56,9359478001172,High Fibre Peach Loaf Box12,,12,,,,,,,19359478001179
+,,BK58,9359478001196,Apple & Cini Loaf Box 12,,12,,,,,,,19359478001193
+,,BK61,,Carrot Bread Box 12,,12,,,,,,,
+,,BK80,9359478001424,Apple Cini Scroll Tray12 Box 12,,12,,,,,,,19359478001421
+,,BK83,9359478001431,Pizza Vegi Scoll Tray 12 Box 12,,12,,,,,,,19359478001438
+,,BK90,9359478001486,GF Date and Rice Bubble Slice,,60,,,,,,,
+,,BK93,9359478001660,Pineapple Vege Pizza Scroll,,12,,,,,,,9359478002100
+,,BR01,9313968090275,HOMESTYLE Wholemeal Bread (Loaf - 18 slices),,,,,,,,,
+,,BR08,9339423009323,"Pikelets (8) (no Egg, Milk)",,1,,,,,,,
+,,BR14,9339423003284,Spicy Fruit Muffins (6pkt),,1,,,,,,,
+,,BR15,9339423003253,English Muffins (6pk),,1,,,,,,,
+,,BR17,9317224401843,"Pizza Base Mission 7""",,8,,,,,,,
+,,BR18,Null,Hotdog Rolls 9in 6pk,,1,,,,,,,
+,,CH02,9318088612321,Tasty Cheese Slices - 1.5kg,,1,,,,,,,
+,,CH04,9310272007821,Grated/Shredded Cheese - 500Gm,,1,,,,,,,
+,,CH05,9300650431812,PHILADELPHIA Cream Cheese Spreadable 250g,,1,,,,,,,
+,,CHP02,850068652341,Lamb & Vegetable Medley Chunky,,44,,,850068652518,,,,
+,,CHP03,850068652372,Roast Chicken & Lentil Pot Chunky,,44,,,,,,,
+,,CHP10,,Cauliflower Pumpkin & Wakame Puree Chunky,,44,,,,,,,
+,,CHP17,,Mixed Berry Porridge Chunky,,44,,,,,,,
+,,CHP19,850068652556,Spinach & Lentil Dahl Chunky,,44,,,,,,,
+,,CHP24,850068652495,Greens & Beans Hemp Seed Mash Chunky,,44,,,,,,,
+,,CHP25,850068652518,Root Veg & Chickpea Tagine Chunky,,44,,,,,,,
+,,CHP30,850068652532,"Beef, Broth & Lentil Stew Chunky",,44,,,,,,,
+,,DC02,9348204000053,BIO Cheese Slices - 200g,,1,,,,,,,
+,,DCP03,9310213559891,Cooked Chicken 1kg,,6,,,,,,,
+,,DCP08,9310582098113,Chicken Meat Sliced Roasted (Strips) - Inghams,,6,,,,,,,
+,,DF01,Null ,SUNBEAM Sultanas- 40 grams,,1,,,,,,,
+,,DG03,9310140007717,SUNRISE Rice Cakes - 150g,,6,,,,,,,
+,,DIP05,9335203000313,Simpson Farms Seasoned Avocado Pulp,,12,,,,,,,9335203000320
+,,DIP06,9347799000158,Traditional Middle Eastern Hommus - 1kg,,6,,,,,,,
+,,DIP09,9347799007393,Beetroot Pesto Dip,,6,,,,,,,
+,,DM02,9341650000714,VITASOY Coconut Milk - 1Lt,,1,,,,,19331543019319,,
+,,DM03,9300652510911,So Good Soy Milk - 1Lt,,1,,,,,,,
+,,DM06,9341650001711,VITASOY Rice Milk 1 Litre,,1,,,,,,,
+,,DM07,9341650001728,Oat Milk 1lt,,1,,,,,,,
+,,DY01,9313672000638,Dairy Free Yoghurt (250gm) Kingland - Berries,,1,,,,,,,
+,,DY05,9300639618661,LIDDELS Lactose Free Milk - 1 Litre,,1,,,,,,,
+,,FV09,9310081426394,BIRDS EYE Peas & Corn - Frozen- 1kg,,10,,,,,,,
+,,FV19,9310389010189,Broccoli - Frozen - 1.5kg,,6,,,,,,,
+,,FV20,9310174006014,Peas Frozen 500gm,,1,,,,,,,
+,,FV23,9310081408123,CORN COB - 1kg,,12,,,,,,,
+,,FV26,9331543019329,Carrot Cauliflower Broccoli - DEWFRESH,,6,,,,,,,
+,,FV27,9331543019312,"Mixed Diced Veg - Carrot, beans, broc, peas, corn",,6,,,,,,,
+,,FV28,Null ,10mm Straight Cut Chips (Markwell),,6,,,,,,,19310389000071
+,,FW02,2345,Apples - Red - 1kg,,,,,,,,,
+,,FW03,,Oranges - 1kg,,,,,,,,,
+,,FW06,4567,Bananas - 1 kg,,,,,,,,,
+,,FW07,,Pears - 1 kg,,,,,,,,,
+,,FW10,,Apples - Green - 1kg,,,,,,,,,
+,,FW12,,Rockmelon- 750 grams- Each,,,,,,,,,
+,,FW13,9359478000151,Watermelon- 5kg- Each,,,,,,,,,
+,,FW19,,Nectarines - 1kg,,,,,,,,,
+,,GC02,9322969000015,Real Foods Corn Thins Original - 150 grms,,6,,,,,,,
+,,GC06,4088700354780,DAMORA Eton Cracker Biscuits,,,,,,,,,
+,,GC07,4088700036778,Rice Crackers,,12,,,,,,,
+,,GC11,9317224400990,MISSION CORN CHIPS ROUND-500 grams,,,,,,,,9322969000015,19317224
+,,GC37,GC37,Mini Beetroot Falafels,,12,,,,,,,
+,,GS01,9352042002094,Vegemite Gluten Free - 235grams,,1,,,,,,,
+,,GS02,9352042000281,Vegemite - 380 grams (Plain Trim),,1,,,,,,,
+,,LA01,9359478000687,Cooked Rice- 1 Kg Bag- Frozen,,5,,,,,,,9359478002513
+,,LA02,9359478000694,Cooked Pasta- 1Kg Bag-Frozen,,5,,,,,,,9359478002506
+,,LH101,Null,Harvest Apricot Chicken,,8,,,,,,,
+,,LH102,9359478002162,Vegetarian Lasagne Gluten Free,,8,,,,,,,9359478002315
+,,LH109,9359478001783,Chickpea Hot Pot with Cous Cous,,8,,,,,,,9359478001899
+,,LH110,9359478002148,Lamb Gyros,,10,,,,,,,9359478002155
+,,LH115,9359478001820,Mac n Cheese (protein packed),,8,,,,,,,9359478001929
+,,LH116,9359478001837,Delicious Dahl with Turmeric Rice,,8,,,,,,,9359478001936
+,,LH119,9359478002230,Chicken Korma Curry with Rice (New),,8,,,,,,,9359478002353
+,,LH130,9359478002643,Vegetable Tagine with Pasta,,8,,,,,,,9359478002810
+,,LH131,,Fish Coconut Curry with Green Beans,,8,,,,,,,
+,,LH132,9359478002650,Chicken & Mushroom Bottomless Pie,,8,,,,,,,
+,,LH133,9359478002728,Hosin Beef with Noodles,,8,,,,,,,
+,,LH133S,,Hoisin Beef with Noodles 200g,,20,,,,,,,
+,,LH134,,Chicken Fried Rice,,8,,,,,,,
+,,LH135,9359478002704,Pumpkin Macaroni (New),,8,,,,,,,9359478002865
+,,LH136,9359478000786,Chicken Pizza Sauce 600g,,10,,,,,,,9359478002971
+,,LH137,9359478002674,Beef Goulash with Potato (New),,8,,,,,,,9359478002834
+,,LH138,9359478002681,Vegetarian Cottage Pie (New),,8,,,,,,,9359478002841
+,,LH140,9359478000793,Bangers & Mash with Gravy (Lower sodium),,8,,,,,,,9359478002964
+,,LH140S,,Bangers and Mash with Gravy 200g,,20,,,,,,,
+,,LH141,9359478003725,Italian Meatballs in Tomato Sauce,,8,,,,,,,9359478003732
+,,LH142,,Fish Mornay with Brown Rice,,8,,,,,,,
+,,LH143,9359478003671,Rainbow Pasta Bake (Protein Packed),,8,,,,,,,
+,,LH53,9359478000571,Italian Meatballs in Tomato Sauce W Pasta,,8,,,,,,,9359478002445
+,,LH53S,,Beef Meatballs with Pasta  200g,,20,,,,,,,
+,,LH64,9359478000618,Chicken Alfredo with Peas & Penne,,8,,,,,,,9359478003589
+,,LH68,9359478000632,Spaghetti Bolognaise,,8,,,,,,,9359478002520
+,,LH70,9359478000489,Beef Nachos - 900grams,,8,,,,,,,9359478002438
+,,LH73,9359478000649,Creamy Beef Stroganoff - 1150grams,,8,,,,,,,9359478002483
+,,LH76,9359478002216,Mexican Beans,,8,,,,,,,9359478002490
+,,LH83,9359478003619,Chicken Creole with Pilaf Rice,,8,,,,,,,9359478003626
+,,LH85,9331543007944,Seafrost Crumbed Southern Blue Whiting Goujon Fillets 3x1kg,,3,,,,,,,19331543007941
+,,LH90,9359478002452,Beef Lasagne Dairy Free,,8,,,,,,,9359478002469
+,,LH90S,,Beef Lasagna 200g,,20,,,,,,,
+,,LH92,9359478002223,Butter Chicken Dairy Free,,8,,,,,,,9359478002537
+,,LH92S,,Butter Chicken with Rice 200g,,20,,,,,,,
+,,MIL2,9331543019206,Milk Full Cream -  2Lt,,6,,,,,,,
+,,SD01,9359478002988,Beef and Potato Stew,,20,,,,,,,9359478003558
+,,SD02,9359478002995,Three Bean and Beef Chili on Steamed Rice,,20,,,,,,,9359478003534
+,,SD03,9359478003008,Chickpea and Lentil Dhal with Steamed Brown Rice,,20,,,,,,,9359478003510
+,,SD05,9359478003022,Chicken Vegetable and Lentil on Brown Rice,,20,,,,,,,9359478003503
+,,SD07,9359478003046,Three Bean Chilli on Steamed Rice,,20,,,,,,,9359478003572
+,,SD09,9359478003060,Pumpkin Risotto with Spinach and Chickpea Hot Pot,,20,,,,,,,9359478003473
+,,SD10,9359478003077,Vegetable and Lentils on Brown Rice,,20,,,,,,,9359478003466
+,,SD11,9359478003084,Chicken & Brown Rice,,20,,,,,,,9359478003459
+,,SD12,9359478003091,Portuguese Chicken with Brown Rice,,20,,,,,,,9359478003442
+,,SD13,9359478003107,"Beef, Pumpkin and Spinach Casserole",,20,,,,,,,9359478003435
+,,SD14,9359478003114,"Sweet Potato, Mushroom, Bean & GF Pasta Mornay",,20,,,,,,,9359478003428
+,,SD15,9359478003121,Scrumptious Sweet Potato & Beef Cottage Pie,,20,,,,,,,9359478003565
+,,SD16,9359478003138,Beef Noodles (160Gm),,20,,,,,,,9359478003411
+,,SD18,9359478003152,Brown Rice & Vegetables,,20,,,,,,,9359478003398
+,,SD19,9359478003633,Chicken with Brown Rice and Green Beans,,20,,,,,,,9359478003640
+,,SD20,9359478003169,Plain Chicken and Butter Beans on Brown Rice,,20,,,,,,,9359478003374
+,,SD23,9359478003190,Chicken with Potato and Carrot- 160 grams,,20,,,,,,,9359478003343
+,,SD24,9359478003206,Beef with Sweet Potato and Broccoli- 160 grams,,20,,,,,,,9359478003336
+,,SD25,9359478003213,"White Potato, Broccoli and Pumpkin - 160 gram",,20,,,,,,,9359478003329
+,,SD26,9359478003220,"White Rice, Green Beans and Cauliflower - 160 gram",,20,,,,,,,9359478003312
+,,SD28,9359478003237,VEGETARIAN LASAGNA,,20,,,,,,,9359478003305
+,,SD29,9359478003244,Stir Fried Vegetables with Rice Noodles,,20,,,,,,,9359478003299
+,,SD31,9359478003268,Baked Vegetable Risotto,,20,,,,,,,9359478003275
+,,,,,,,,,,,,,
+,,,,,,20,,,,,,,
+,,SMP02,850068652334,Lamb & Vegetable Medley Smooth,,44,,,,,,,10850068652331
+,,SMP03,850068652358,Roast Chicken & Lentil Pot Smooth,,44,,,,,,,10850068652355
+,,SMP10,850068652389,Cauliflower Pumpkin & Wakame Puree Smooth,,44,,,,,,,
+,,SMP14,850068652402,Blueberry & Banana Porridge Smooth,,44,,,,,,,10850068652409
+,,SMP17,850068652426,Mixed Berry Porridge Smooth,,44,,,,,,,
+,,SMP18,,Banana & Strawberry Chia Pudding Smooth,,44,,,,,,,
+,,SMP19,850068652549,Spinach & Lentil Dahl Smooth,,44,,,,,,,
+,,SMP24,850068652488,Greens & Beans Hemp Seed Mash Smooth,,44,,,,,,,
+,,SMP25,850068652501,Root Veg & Chickpea Tagine Smooth,,44,,,,,,,
+,,SMP30,850068652525,"Beef, Broth & Lentil Stew Smooth",,44,,,,,,,
+,,SP05,9310421000017,Nuttelex Orginal 500 grams tub,,1,,,,,,,
+,,SP06,9300657801755,IXL Strawberry Jam,,,,,,,,,
+,,SP07,19300830053510,Vegan Mayonnaise - 1kg,,6,,,,,,,
+,,SP08,9300681020535,Fountain Tomato Sauce Reduced Sugar Reduced Sugar,,1,,,,,,,
+,,TF01,9310093003873,GOULBURN VALLEY Peaches in Juice,,1,,,,,,,
+,,TF02,9310093004313,GOULBURN VALLEY Pears in Juice,,1,,,,,,,
+,,TW01,9317224400693,"Mission 6"" Tortilla Wrap",,24,,,,,,,
+,,VC02,,Carrots - Fresh - 500g,,,,,,,,,
+,,VC03,1234,Carrot Baton - Fresh - 1 kg,,,,,,,,,
+,,VC10,VC10,Iceberg Lettuce - 800gm (EA),,,,,,,,,
+,,VW08,,Cucumber - Fresh 400 grams each,,,,,,,,,
+,,Y013,9343632000217,Natural Sweetened yoghurt 1kg,,,,,,,,,
+,,Y017,9343632000569,Peach Yoghurt,,,,,,,,,
+,,LA05,LA05,veg patty 70g,,,,,,,,,
+,,SD51,9359478003787,,,20,,,,,,,9359478003794
+,,Dip12,9313672000706,,,1,,,,,,,
+,,Yo01,9300658228537,Greek yoghurt ,,,,,,,,,
+,,Chp18,850068652457,Banana and Strawberry chia pudding ,,,,,,,,,
+,,SMP32,,Lamb & Vegetable Medley Smooth,,20,,,,,,,
+,,SMP33,,Roast Chicken & Lentil Pot Smooth,,20,,,,,,,
+,,SMP31,,"Beef, Broth & Lentil Stew Smooth",,20,,,,,,,
+,,SMP38,,,,20,,,,,,,
+,,SMP39,,Golden Veg,,20,,,,,,,
+,,SMP37,,,,20,,,,,,,
+,,CHP32,,Lamb & Vegetable Medley Chunky,,20,,,,,,,
+,,CHP33,,Roast Chicken & Lentil Pot Chunky,,20,,,,,,,
+,,CHP31,,"Beef, Broth & Lentil Stew Chunky",,20,,,,,,,
+,,CHP38,,,,20,,,,,,,
+,,CHP39,,Golden Veg,,20,,,,,,,
+,,CHP37,,,,20,,,,,,,
+,,SD32,,,,20,,,,,,,
+,,SD33,,,,20,,,,,,,
+,,SD34,,,,20,,,,,,,
+,,SD35,,,,20,,,,,,,
+,,SD36,,,,20,,,,,,,
+,,SD37,,,,20,,,,,,,
+,,SD38,9359478003770,Chicken and Two Veg (Potato & Carrot) 200g,,20,,,,,,,9359478003800
+,,SD39,,,,20,,,,,,,
+,,SD40,,,,20,,,,,,,
+,,SD41,,,,20,,,,,,,
+,,SD42,,,,20,,,,,,,
+,,SD43,,,,20,,,,,,,
+,,SD44,,,,20,,,,,,,
+,,SD45,,,,20,,,,,,,
+,,SD46,,,,20,,,,,,,
+,,SD47,,,,20,,,,,,,
+,,SD48,,,,20,,,,,,,
+,,SD49,,,,20,,,,,,,
+,,SD50,,,,20,,,,,,,
+,,SD51,,,,20,,,,,,,
+,,SD52,,,,20,,,,,,,
+,,SD53,,,,20,,,,,,,
+,,SD54,,,,20,,,,,,,
+,,SD55,9359478003862,Three Bean Chilli on Rice 200g,,20,,,,,,,
+,,SD56,,,,20,,,,,,,
+,,SD57,,,,20,,,,,,,
+,,SD58,,,,20,,,,,,,
+,,SD59,,,,20,,,,,,,
+,,LH147,,Beef Black Bean and Noodles,,8,,,,,,,
+,,LH145,,Cauliflower Mornay,,8,,,,,,,
+,,LH146,,"Chicken Patties, Mash and Sweet Gravy",,8,,,,,,,
+,,BK4120,,Rainbow Buns,,24,,,,,,,
+,,BR20,,Bambini Buns,,20,,,,,,,
+,,BK4121,,Peach Crumble Bar,,8,,,,,,,
+,,BK4122,,Curry Buns,,8,,,,,,,
+,,BK4119,,Pizza Pocket,,60,,,,,,,
