@@ -1,31 +1,65 @@
-# Inventory Grid App
+# Carton Compiler
 
-If the grid appears blank (no cells, no button behavior), the page is usually being opened in a way that does not load local JS/CSS correctly.
+A lightweight, browser-based inventory compiler. Upload one or more CSV exports and
+the app combines matching item numbers, totals their quantities, and uses the carton
+size stored in the source data to calculate the cartons required.
 
-## Recommended run (Linux / Steam Deck / Windows)
+## Run locally
 
-From the project folder:
+No build step or server-side dependencies are required:
 
 ```bash
-python3 -m http.server 4173
+python3 -m http.server 8000
 ```
 
-Then open:
+Then open <http://localhost:8000>.
 
-- `http://127.0.0.1:4173`
+## Expected CSV columns
 
-> If hosting on S3/static hosting, make sure `index.html`, `app.js`, and `styles.css` are uploaded at the same path level and served with standard web MIME types (`text/html`, `application/javascript`, `text/css`).
-> The source catalog now defaults to `source.json` (with CSV fallback), so include that file if you want barcode lookup preloaded.
+The compiler automatically recognizes common alternatives for these fields:
 
-## Files
+| Field | Examples |
+| --- | --- |
+| Product code | `Code`, `Product Code`, `Item Number`, `SKU`, `Item` |
+| Description | `Description`, `Item Description`, `Product Name` |
+| Quantity | `Quantity`, `Qty`, `Units`, `Order Qty` |
+| Carton size | `Carton Size`, `Case Pack`, `Units Per Carton`, `Pack Size` |
 
-- `index.html` – app shell and modals
-- `styles.css` – styles
-- `app.js` – grid + inventory logic
-- `source.json` – default source catalog format for barcode lookup
+The inventory reference must be named `source.json` or `source.csv` and live in the
+same folder as `index.html`. The app automatically tries `source.json` first and then
+`source.csv`. The source columns are `Product Code`, `Description`, `Carton`,
+`Single`, and `Carton Size`; `Carton Size` (also accepted as `Carton Count`) is the
+number of units in a full carton.
+The included `source.csv` is a header template that can be replaced with inventory
+data. For JSON, use an array of objects with the same property names (or an object
+with that array under `items`).
 
-## Adding products to the source catalog
+When the page is opened directly from the filesystem (`file://`), browser security
+prevents JavaScript from automatically reading another local file. In that case, use
+the **Choose source** button shown in the app. Automatic loading works when the app
+is served with the local server command above.
 
-When a barcode or product-code lookup cannot find a product, the app can add the completed product details to its source catalog after confirmation. Product Code is the primary source entry identifier, so products without a barcode can still be saved, exported, and found by product-code lookup. New source entries are saved in that browser's local storage, merged with the hosted source catalog after every reload, and included in future lookups.
+Uploaded quantity files must include `Code` and `Quantity`; `Name` is optional. The
+compiler maps `Code` to the source `Product Code`, uses the source description and
+carton count, and clearly flags product codes with no source match. CSV processing
+is performed entirely in the browser and uploaded data is not sent anywhere.
 
-Use **Update Source → Download Updated Source** to download the combined catalog when you are ready to replace the hosted `source.json` or `source.csv`. Browser-stored additions remain local to that browser until the downloaded catalog is uploaded to the host.
+CSV imports automatically detect comma, semicolon, or tab delimiters, Excel `sep=`
+hints, UTF-8/UTF-16 encoding, and up to 14 informational rows before the actual
+column header. Header matching is case-insensitive, and column positions do not
+matter: `NAME`, `CODE`, and `QUANTITY` are recognized wherever they appear.
+
+Input uploads may be individual CSV files or ZIP archives containing one or more
+CSV files. Password-protected and ZIP64 archives are not supported.
+
+Compiled results use a print-friendly quadrant layout: `LH`, `LA`, `BK` (except
+`BK4119`), and `BR` appear on the left; `SMP` and `CHP` appear at the top right; and
+`SD` appears underneath them. Any unmatched codes, including `BK4119`, are retained
+in an **Other items** section rather than being discarded.
+
+In the compiled output, `Code` becomes `Product Code` and `Name` becomes
+`Description`. Quantity is divided by the stored carton size: complete cases are
+written to `Carton`, while the remainder is written to `Single` (for example, a
+quantity of 25 with a carton size of 12 produces 2 cartons and 1 single). If an item
+has no usable carton size in the source, it produces 0 cartons and its entire
+quantity is shown as singles.

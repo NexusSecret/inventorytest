@@ -1,1408 +1,340 @@
-const MAX_X = 10;
-const MAX_Y = 4;
-const STORAGE_KEY = "inventory-grid-state-v1";
-const SOURCE_URL_KEY = "inventory-source-url";
-const SOURCE_SAVE_URL_KEY = "inventory-source-save-url";
-const SOURCE_ADDITIONS_KEY = "inventory-source-additions-v1";
+const state = { files: [], compiled: [], sourceItems: new Map(), sourceFile: "" };
 
-const grid = document.getElementById("inventory-grid");
-const exportCsvButton = document.getElementById("export-csv");
-const importCsvButton = document.getElementById("import-csv");
-const openSourceMenuButton = document.getElementById("open-source-menu");
-const openOutputMenuButton = document.getElementById("open-output-menu");
-const loadSourceCsvButton = document.getElementById("load-source-csv");
-const loadSourceUrlButton = document.getElementById("load-source-url");
-const testSourceSaveUrlButton = document.getElementById("test-source-save-url");
-const downloadSourceButton = document.getElementById("download-source");
-const csvFileInput = document.getElementById("csv-file-input");
-const sourceFileInput = document.getElementById("source-file-input");
-const sourceUrlInput = document.getElementById("source-url-input");
-const sourceSaveUrlInput = document.getElementById("source-save-url-input");
-const exportJsonButton = document.getElementById("export-json");
-const importJsonButton = document.getElementById("import-json");
-const resetCellDataButton = document.getElementById("reset-cell-data");
-const jsonFileInput = document.getElementById("json-file-input");
-const sourceStatus = document.getElementById("source-status");
-const aisleSelect = document.getElementById("aisle-select");
-const newAisleButton = document.getElementById("new-aisle");
+const fieldAliases = {
+  item: ["productcode", "code", "itemnumber", "itemno", "sku", "item", "productid", "partnumber"],
+  description: ["description", "itemdescription", "productname", "name"],
+  quantity: ["quantity", "qty", "units", "orderqty", "orderquantity", "unitcount"],
+  carton: ["cartoncount", "cartonsize", "casepack", "unitspercarton", "unitspercase", "packsize", "casequantity", "caseqty"]
+};
 
-const modalBackdrop = document.getElementById("modal-backdrop");
-const editModal = document.getElementById("edit-modal");
-const viewModal = document.getElementById("view-modal");
-const editCoordinateLabel = document.getElementById("edit-coordinate");
-const viewCoordinateLabel = document.getElementById("view-coordinate");
-const editItemsList = document.getElementById("edit-items-list");
-const viewItemsList = document.getElementById("view-items-list");
-const editForm = document.getElementById("edit-form");
-const saveItemButton = document.getElementById("save-item");
-const cancelItemEditButton = document.getElementById("cancel-item-edit");
-const clearCellButton = document.getElementById("clear-cell");
-const closeEditButton = document.getElementById("close-edit");
-const closeViewButton = document.getElementById("close-view");
-const closeEditTopButton = document.getElementById("close-edit-top");
-const closeViewTopButton = document.getElementById("close-view-top");
-const barcodeLookupButton = document.getElementById("barcode-lookup");
-const codeLookupButton = document.getElementById("code-lookup");
-const pickDateButton = document.getElementById("pick-date");
-const nativeDatePicker = document.getElementById("native-date-picker");
-const navigateUpButton = document.getElementById("navigate-up");
-const navigateDownButton = document.getElementById("navigate-down");
-const navigateLeftButton = document.getElementById("navigate-left");
-const navigateRightButton = document.getElementById("navigate-right");
-const sourceMenuBackdrop = document.getElementById("source-menu-backdrop");
-const closeSourceMenuButton = document.getElementById("close-source-menu");
-const closeSourceMenuTopButton = document.getElementById("close-source-menu-top");
-const outputMenuBackdrop = document.getElementById("output-menu-backdrop");
-const closeOutputMenuButton = document.getElementById("close-output-menu");
-const closeOutputMenuTopButton = document.getElementById("close-output-menu-top");
+const elements = {
+  fileInput: document.querySelector("#fileInput"), dropZone: document.querySelector("#dropZone"),
+  fileList: document.querySelector("#fileList"), message: document.querySelector("#message"),
+  clear: document.querySelector("#clearButton"), compile: document.querySelector("#compileButton"),
+  results: document.querySelector("#results")
+};
 
-let currentEditCoordinate = null;
-let editingItemIndex = null;
-let currentAisleId = "default";
-const aisles = [{ id: "default", name: "Inventory" }];
-const cellModes = new Map();
-const cellLabels = new Map();
-const inventoryItems = [];
-let exportTitle = "inventory";
-let exportDateStamp = "";
-const sourceCatalogByBarcode = new Map();
-const sourceCatalogByScanCode = new Map();
-const sourceCatalogByProductCode = new Map();
-const sourceCatalogEntries = new Map();
-const localSourceAdditions = new Map();
-
-const numericFieldNames = ["carton", "single", "cartonSize"];
-
-function coordinatePrefix() {
-  const aisle = aisles.find((entry) => entry.id === currentAisleId);
-  const source = aisle?.name?.trim() || "X";
-  return source[0].toUpperCase();
-}
-
-function toCoordinate(x, y) {
-  return `${coordinatePrefix()}${String(x).padStart(2, "0")}${String(y).padStart(2, "0")}`;
-}
-
-function cellKey(aisleId, x, y) {
-  return `${aisleId}:${x}:${y}`;
-}
-
-function coordinateToXY(coordinate) {
-  const body = coordinate.slice(1);
-  return {
-    x: Number(body.slice(0, 2)),
-    y: Number(body.slice(2, 4)),
-  };
-}
-
-function getCellMode(aisleId, x, y) {
-  return cellModes.get(cellKey(aisleId, x, y)) || "active";
-}
-
-function setCellModeValue(aisleId, x, y, mode) {
-  cellModes.set(cellKey(aisleId, x, y), mode);
-}
-
-function getCellLabel(aisleId, x, y) {
-  return cellLabels.get(cellKey(aisleId, x, y)) || "";
-}
-
-function setCellLabel(aisleId, x, y, label) {
-  const key = cellKey(aisleId, x, y);
-  const cleaned = label.trim();
-  if (cleaned) {
-    cellLabels.set(key, cleaned);
-  } else {
-    cellLabels.delete(key);
+function detectDelimiter(text) {
+  const sample = text.split(/\r?\n/).filter(line => line.trim()).slice(0, 5).join("\n");
+  const counts = [[",", 0], [";", 0], ["\t", 0]]; let quoted = false;
+  for (const char of sample) {
+    if (char === '"') quoted = !quoted;
+    else if (!quoted) counts.forEach(entry => { if (char === entry[0]) entry[1] += 1; });
   }
+  counts.sort((a, b) => b[1] - a[1]);
+  return counts[0][1] ? counts[0][0] : ",";
 }
 
-function toNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function calculateItemTotal(item) {
-  return toNumber(item.carton) * toNumber(item.cartonSize) + toNumber(item.single);
-}
-
-function calculateTotalCost(item) {
-  return calculateItemTotal(item) * toNumber(item.avgCost);
-}
-
-function escapeCsv(value) {
-  const raw = String(value ?? "");
-  if (raw.includes(",") || raw.includes("\n") || raw.includes('"')) {
-    return `"${raw.replace(/"/g, '""')}"`;
-  }
-  return raw;
-}
-
-function parseCsvLine(line) {
-  const cells = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
-
-    if (char === '"' && inQuotes && next === '"') {
-      current += '"';
-      index += 1;
-      continue;
-    }
+function parseCSV(rawText) {
+  let text = rawText.replace(/^\uFEFF/, "");
+  const separatorHint = text.match(/^sep=(.)\s*(?:\r?\n)/i);
+  const delimiter = separatorHint?.[1] || detectDelimiter(text);
+  if (separatorHint) text = text.slice(separatorHint[0].length);
+  const rows = []; let row = []; let value = ""; let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
     if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-    if (char === "," && !inQuotes) {
-      cells.push(current);
-      current = "";
-      continue;
-    }
-    current += char;
+      if (quoted && text[index + 1] === '"') { value += '"'; index += 1; } else quoted = !quoted;
+    } else if (char === delimiter && !quoted) { row.push(value); value = ""; }
+    else if ((char === "\n" || char === "\r") && !quoted) {
+      if (char === "\r" && text[index + 1] === "\n") index += 1;
+      row.push(value); if (row.some(cell => cell.trim())) rows.push(row); row = []; value = "";
+    } else value += char;
   }
-  cells.push(current);
-  return cells;
+  row.push(value); if (row.some(cell => cell.trim())) rows.push(row);
+  return rows;
 }
 
-function normalizeBarcode(value) {
-  const raw = String(value ?? "").replace(/^"+|"+$/g, "").trim();
-  if (!raw) {
-    return "";
-  }
+const normalize = value => value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+const cleanNumber = value => {
+  const cleaned = String(value ?? "").replace(/[$,\s]/g, "");
+  return cleaned === "" ? Number.NaN : Number(cleaned);
+};
+const formatNumber = value => new Intl.NumberFormat().format(value);
 
-  const compact = raw.replace(/[\s-]+/g, "");
-  if (/^\d+(\.0+)?$/.test(compact)) {
-    return compact.replace(/\.0+$/, "");
-  }
-
-  if (/^\d+(\.\d+)?e[+-]?\d+$/i.test(compact)) {
-    const expanded = Number(compact);
-    if (Number.isFinite(expanded) && Number.isInteger(expanded)) {
-      return String(expanded);
-    }
-  }
-
-  return compact;
+function decodeCSV(buffer) {
+  const bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder("utf-16le").decode(buffer);
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder("utf-16be").decode(buffer);
+  const zeroes = bytes.slice(0, 100).filter(byte => byte === 0).length;
+  return new TextDecoder(zeroes > 10 ? "utf-16le" : "utf-8").decode(buffer);
 }
 
-function findColumnIndex(header, candidates) {
-  const normalizedHeader = header.map((entry) => entry.trim().toLowerCase());
-  return normalizedHeader.findIndex((entry) => candidates.includes(entry));
+function findHeader(rows, requiredFields) {
+  for (let index = 0; index < Math.min(rows.length, 15); index += 1) {
+    const columns = identifyColumns(rows[index]);
+    if (requiredFields.every(field => columns[field] >= 0)) return { columns, dataRows:rows.slice(index + 1) };
+  }
+  return null;
 }
 
-function indexSourceEntry(entry) {
-  const barcode = normalizeBarcode(entry?.barcode);
-  const outerBarcode = normalizeBarcode(entry?.outerBarcode);
-  const canonicalBarcode = barcode || outerBarcode;
-  const code = String(entry?.code || "").trim();
-  if (!code && !canonicalBarcode) {
-    return false;
-  }
-
-  const entryKey = code ? `code:${code.toUpperCase()}` : `barcode:${canonicalBarcode}`;
-  const existingEntry = sourceCatalogEntries.get(entryKey);
-  const normalizedEntry = {
-    barcode: barcode || existingEntry?.barcode || "",
-    outerBarcode: outerBarcode || existingEntry?.outerBarcode || "",
-    code,
-    description: String(entry?.description || existingEntry?.description || "").trim(),
-    cartonSize: String(entry?.cartonSize || existingEntry?.cartonSize || "").trim(),
-    avgCost: String(entry?.avgCost || existingEntry?.avgCost || "").trim(),
-  };
-
-  sourceCatalogEntries.set(entryKey, normalizedEntry);
-  const indexedBarcode = normalizedEntry.barcode || normalizedEntry.outerBarcode;
-  if (indexedBarcode) {
-    sourceCatalogByBarcode.set(indexedBarcode, normalizedEntry);
-    sourceCatalogByScanCode.set(indexedBarcode, normalizedEntry);
-  }
-  if (normalizedEntry.outerBarcode) {
-    sourceCatalogByScanCode.set(normalizedEntry.outerBarcode, normalizedEntry);
-  }
-  if (normalizedEntry.code) {
-    sourceCatalogByProductCode.set(normalizedEntry.code.toUpperCase(), normalizedEntry);
-  }
-  return true;
-}
-
-function mergeLocalSourceAdditions() {
-  localSourceAdditions.forEach((entry) => indexSourceEntry(entry));
-}
-
-function loadLocalSourceAdditions() {
-  localSourceAdditions.clear();
-  try {
-    const entries = JSON.parse(localStorage.getItem(SOURCE_ADDITIONS_KEY) || "[]");
-    if (!Array.isArray(entries)) {
-      return;
-    }
-    entries.forEach((entry) => {
-      const barcode = normalizeBarcode(entry?.barcode);
-      const code = String(entry?.code || "").trim();
-      if (code || barcode) {
-        const entryKey = code ? `code:${code.toUpperCase()}` : `barcode:${barcode}`;
-        localSourceAdditions.set(entryKey, { ...entry, barcode, code });
-      }
+function sourceRowsToMap(rows) {
+  const header = findHeader(rows, ["item", "carton"]);
+  if (!header) throw new Error("The source needs Product Code and Carton Size columns.");
+  const { columns, dataRows } = header;
+  const source = new Map();
+  dataRows.forEach(row => {
+    const productCode = (row[columns.item] || "").trim();
+    const cartonValue = cleanNumber(row[columns.carton]);
+    if (!productCode) return;
+    source.set(productCode.toLowerCase(), {
+      productCode,
+      description:columns.description >= 0 ? (row[columns.description] || "").trim() : "",
+      cartonCount:Number.isFinite(cartonValue) && cartonValue > 0 ? cartonValue : 0
     });
-  } catch {
-    localStorage.removeItem(SOURCE_ADDITIONS_KEY);
-  }
-}
-
-function saveLocalSourceAddition(entry) {
-  const barcode = normalizeBarcode(entry?.barcode);
-  const code = String(entry?.code || "").trim();
-  if (!code && !barcode) {
-    return;
-  }
-  const entryKey = code ? `code:${code.toUpperCase()}` : `barcode:${barcode}`;
-  localSourceAdditions.set(entryKey, { ...entry, barcode, code });
-  localStorage.setItem(SOURCE_ADDITIONS_KEY, JSON.stringify(Array.from(localSourceAdditions.values())));
-}
-
-function parseSourceCatalogCsv(text) {
-  sourceCatalogEntries.clear();
-  sourceCatalogByBarcode.clear();
-  sourceCatalogByScanCode.clear();
-  sourceCatalogByProductCode.clear();
-  const rows = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (rows.length < 2) {
-    return 0;
-  }
-
-  const header = parseCsvLine(rows[0]);
-  const barcodeIndex = findColumnIndex(header, ["barcode"]);
-  const outerBarcodeIndex = findColumnIndex(header, ["outerbarcode", "outer barcode", "outer_barcode"]);
-  const codeIndex = findColumnIndex(header, ["product code", "code"]);
-  const descriptionIndex = findColumnIndex(header, ["description"]);
-  const cartonSizeIndex = findColumnIndex(header, ["carton size"]);
-  const avgCostIndex = findColumnIndex(header, ["avg cost"]);
-
-  if (barcodeIndex < 0 && codeIndex < 0) {
-    return 0;
-  }
-
-  for (let index = 1; index < rows.length; index += 1) {
-    const columns = parseCsvLine(rows[index]);
-    const fromColumn = (columnIndex) => (columnIndex >= 0 ? columns[columnIndex] : "");
-    const barcode = normalizeBarcode(fromColumn(barcodeIndex));
-    const outerBarcode = normalizeBarcode(fromColumn(outerBarcodeIndex));
-    const code = String(fromColumn(codeIndex) || "").trim();
-    if (!code && !barcode && !outerBarcode) {
-      continue;
-    }
-
-    const entry = {
-      barcode,
-      outerBarcode: outerBarcode || "",
-      code,
-      description: String(fromColumn(descriptionIndex) || "").trim(),
-      cartonSize: String(fromColumn(cartonSizeIndex) || "").trim(),
-      avgCost: String(fromColumn(avgCostIndex) || "").trim(),
-    };
-
-    indexSourceEntry(entry);
-  }
-
-  mergeLocalSourceAdditions();
-  return sourceCatalogEntries.size;
-}
-
-function parseSourceCatalogJson(text) {
-  sourceCatalogEntries.clear();
-  sourceCatalogByBarcode.clear();
-  sourceCatalogByScanCode.clear();
-  sourceCatalogByProductCode.clear();
-  const parsed = JSON.parse(text);
-  const entries = Array.isArray(parsed)
-    ? parsed
-    : Array.isArray(parsed?.items)
-      ? parsed.items
-      : Object.values(parsed || {});
-
-  const readField = (entry, names) => {
-    for (const name of names) {
-      if (entry?.[name] !== undefined && entry?.[name] !== null) {
-        return String(entry[name]).trim();
-      }
-    }
-    return "";
-  };
-
-  entries.forEach((entry) => {
-    const barcode = normalizeBarcode(readField(entry, ["barcode", "Barcode", "BARCODE"]));
-    const outerBarcode = normalizeBarcode(readField(entry, ["outerBarcode", "OuterBarcode", "outer_barcode", "Outer Barcode"]));
-    const code = readField(entry, ["code", "productCode", "Code", "Product Code"]);
-    if (!code && !barcode && !outerBarcode) {
-      return;
-    }
-    const parsedEntry = {
-      barcode,
-      outerBarcode: outerBarcode || "",
-      code,
-      description: readField(entry, ["description", "Description"]),
-      cartonSize: readField(entry, ["cartonSize", "carton_size", "Carton Size"]),
-      avgCost: readField(entry, ["avgCost", "avg_cost", "Avg Cost"]),
-    };
-    indexSourceEntry(parsedEntry);
   });
-
-  mergeLocalSourceAdditions();
-  return sourceCatalogEntries.size;
+  return source;
 }
 
-function updateSourceStatus(loaded, format = "") {
-  if (!sourceStatus) {
+function jsonToRows(data) {
+  const records = Array.isArray(data) ? data : data.items;
+  if (!Array.isArray(records)) throw new Error("source.json must be an array or contain an items array.");
+  const headers = ["Product Code", "Description", "Carton", "Single", "Carton Size"];
+  return [headers, ...records.map(record => {
+    const normalizedRecord = Object.fromEntries(Object.entries(record).map(([key, value]) => [normalize(key), value]));
+    return headers.map(header => record[header] ?? normalizedRecord[normalize(header)] ?? "");
+  })];
+}
+
+function setSourceStatus(filename) {
+  const status = document.querySelector("#sourceStatus");
+  status.classList.remove("error"); status.querySelector(".source-icon").textContent = "✓";
+  status.querySelector("strong").textContent = `${filename} connected`;
+  status.querySelector("small").textContent = `${state.sourceItems.size} product${state.sourceItems.size === 1 ? "" : "s"} available for carton lookup`;
+}
+
+async function useSource(filename, text) {
+  const rows = filename.toLowerCase().endsWith(".json") ? jsonToRows(JSON.parse(text)) : parseCSV(text);
+  state.sourceItems = sourceRowsToMap(rows); state.sourceFile = filename;
+  setSourceStatus(filename);
+}
+
+async function loadInventorySource() {
+  const status = document.querySelector("#sourceStatus");
+  if (window.location.protocol === "file:") {
+    status.classList.add("error"); status.querySelector(".source-icon").textContent = "!";
+    status.querySelector("strong").textContent = "Choose your inventory source";
+    status.querySelector("small").textContent = "Browsers cannot auto-load nearby files when index.html is opened directly.";
     return;
   }
-  sourceStatus.textContent = loaded
-    ? `Source entries: ${sourceCatalogEntries.size}${format ? ` (${format})` : ""} · Local additions: ${localSourceAdditions.size}`
-    : "Source entries: 0 (not loaded)";
+  const attempts = ["source.json", "source.csv"];
+  for (const filename of attempts) {
+    try {
+      const response = await fetch(filename, { cache:"no-store" });
+      if (!response.ok) continue;
+      await useSource(filename, decodeCSV(await response.arrayBuffer()));
+      return;
+    } catch (error) {
+      status.dataset.error = error.message;
+    }
+  }
+  status.classList.add("error"); status.querySelector(".source-icon").textContent = "!";
+  status.querySelector("strong").textContent = "Inventory source unavailable";
+  status.querySelector("small").textContent = status.dataset.error || "Add source.json or source.csv beside index.html, then refresh.";
 }
 
-function buildSourceCatalogCsvText() {
-  const header = ["Aisle", "Coordinate", "Product Code", "Barcode", "OuterBarcode", "Description", "Carton", "Carton Size", "Single", "Total Units", "Avg Cost", "Total Cost", "Date", "Notes"];
-  const lines = [header.join(",")];
+function identifyColumns(headers) {
+  const normalized = headers.map(normalize); const found = {};
+  Object.entries(fieldAliases).forEach(([field, aliases]) => {
+    found[field] = aliases.map(alias => normalized.indexOf(alias)).find(index => index >= 0) ?? -1;
+  });
+  return found;
+}
 
-  Array.from(sourceCatalogEntries.values())
-    .sort((entryA, entryB) => (entryA.code || entryA.barcode).localeCompare(entryB.code || entryB.barcode, undefined, { numeric: true }))
-    .forEach((entry) => {
-      lines.push([
-        "",
-        "",
-        escapeCsv(entry.code || ""),
-        escapeCsv(entry.barcode || ""),
-        escapeCsv(entry.outerBarcode || ""),
-        escapeCsv(entry.description || ""),
-        "",
-        escapeCsv(entry.cartonSize || ""),
-        "",
-        "",
-        escapeCsv(entry.avgCost || ""),
-        "",
-        "",
-        "Added from app lookup prompt",
-      ].join(","));
+function escapeHTML(value) {
+  return String(value).replace(/[&<>'"]/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" })[char]);
+}
+
+async function inflateZipEntry(bytes, method) {
+  if (method === 0) return bytes;
+  if (method !== 8) throw new Error(`Unsupported ZIP compression method ${method}.`);
+  if (typeof DecompressionStream === "undefined") throw new Error("This browser cannot decompress ZIP files. Upload the CSV files directly instead.");
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function extractZipCSVs(file) {
+  const buffer = await file.arrayBuffer(); const bytes = new Uint8Array(buffer); const view = new DataView(buffer);
+  let eocd = -1;
+  for (let index = Math.max(0, bytes.length - 65557); index <= bytes.length - 22; index += 1) {
+    if (view.getUint32(index, true) === 0x06054b50) eocd = index;
+  }
+  if (eocd < 0) throw new Error(`${file.name} is not a valid ZIP archive.`);
+  const entryCount = view.getUint16(eocd + 10, true); let offset = view.getUint32(eocd + 16, true);
+  if (entryCount > 500) throw new Error(`${file.name} contains too many files.`);
+  const csvs = [];
+  for (let entry = 0; entry < entryCount; entry += 1) {
+    if (view.getUint32(offset, true) !== 0x02014b50) throw new Error(`${file.name} has an invalid ZIP directory.`);
+    const flags = view.getUint16(offset + 8, true); const method = view.getUint16(offset + 10, true);
+    const compressedSize = view.getUint32(offset + 20, true); const uncompressedSize = view.getUint32(offset + 24, true);
+    const nameLength = view.getUint16(offset + 28, true); const extraLength = view.getUint16(offset + 30, true); const commentLength = view.getUint16(offset + 32, true);
+    const localOffset = view.getUint32(offset + 42, true);
+    const name = new TextDecoder((flags & 0x800) ? "utf-8" : "windows-1252").decode(bytes.slice(offset + 46, offset + 46 + nameLength));
+    if (name.toLowerCase().endsWith(".csv") && !name.startsWith("__MACOSX/")) {
+      if (flags & 1) throw new Error(`${name} is encrypted and cannot be read.`);
+      if (uncompressedSize > 100 * 1024 * 1024) throw new Error(`${name} is too large to import.`);
+      if (view.getUint32(localOffset, true) !== 0x04034b50) throw new Error(`${name} has an invalid ZIP entry.`);
+      const localNameLength = view.getUint16(localOffset + 26, true); const localExtraLength = view.getUint16(localOffset + 28, true);
+      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+      const data = await inflateZipEntry(bytes.slice(dataStart, dataStart + compressedSize), method);
+      csvs.push({ name:`${file.name} / ${name}`, size:data.byteLength, arrayBuffer:async () => data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) });
+    }
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+  if (!csvs.length) throw new Error(`${file.name} does not contain any CSV files.`);
+  return csvs;
+}
+
+async function expandInputFiles(files) {
+  const expanded = [];
+  for (const file of files) {
+    if (file.name.toLowerCase().endsWith(".zip")) expanded.push(...await extractZipCSVs(file));
+    else expanded.push(file);
+  }
+  return expanded;
+}
+
+function addFiles(files) {
+  const incoming = [...files].filter(file => /\.(csv|zip)$/i.test(file.name));
+  const existing = new Set(state.files.map(file => `${file.name}-${file.size}-${file.lastModified}`));
+  incoming.forEach(file => { if (!existing.has(`${file.name}-${file.size}-${file.lastModified}`)) state.files.push(file); });
+  if (incoming.length !== files.length) showMessage("Only CSV and ZIP files can be added."); else hideMessage();
+  renderFiles();
+}
+
+function renderFiles() {
+  elements.fileList.innerHTML = state.files.map((file, index) => `<div class="file-card"><span class="file-type">${file.name.toLowerCase().endsWith(".zip") ? "ZIP" : "CSV"}</span><div class="file-details"><strong>${escapeHTML(file.name)}</strong><span>${(file.size / 1024).toFixed(1)} KB</span></div><button class="remove-file" data-index="${index}" aria-label="Remove ${escapeHTML(file.name)}">×</button></div>`).join("");
+  elements.clear.disabled = !state.files.length; elements.compile.disabled = !state.files.length;
+}
+
+function showMessage(message) { elements.message.textContent = message; elements.message.hidden = false; }
+function hideMessage() { elements.message.hidden = true; }
+
+async function compileFiles() {
+  const items = new Map(); const cartonLookup = new Map(); const errors = []; const warnings = []; const parsedFiles = []; const diagnostics = [];
+  state.sourceItems.forEach((item, code) => cartonLookup.set(code, item.cartonCount));
+  let inputFiles;
+  try { inputFiles = await expandInputFiles(state.files); }
+  catch (error) { showMessage(error.message); return; }
+  for (const file of inputFiles) {
+    const rows = parseCSV(decodeCSV(await file.arrayBuffer()));
+    if (rows.length < 2) { errors.push(`${file.name} has no inventory rows.`); continue; }
+    const header = findHeader(rows, ["item"]);
+    const columns = header?.columns;
+    if (!columns || (columns.quantity < 0 && columns.carton < 0)) {
+      errors.push(`${file.name} needs a product code and either a quantity or carton size column.`); continue;
+    }
+    diagnostics.push({ file:file.name, rows:header.dataRows.length, codeColumn:rows[rows.length - header.dataRows.length - 1][columns.item], quantityColumn:columns.quantity >= 0 ? rows[rows.length - header.dataRows.length - 1][columns.quantity] : "" });
+    parsedFiles.push({ file, rows:header.dataRows, columns });
+    if (columns.carton >= 0) header.dataRows.forEach(row => {
+      const itemNumber = (row[columns.item] || "").trim();
+      if (!itemNumber) return;
+      const cartonValue = cleanNumber(row[columns.carton]);
+      if (Number.isFinite(cartonValue) && cartonValue > 0) cartonLookup.set(itemNumber.toLowerCase(), cartonValue);
     });
-
-  return lines.join("\n");
-}
-
-function buildSourceCatalogJsonText() {
-  const items = Array.from(sourceCatalogEntries.values())
-    .sort((entryA, entryB) => (entryA.code || entryA.barcode).localeCompare(entryB.code || entryB.barcode, undefined, { numeric: true }))
-    .map((entry) => ({
-      barcode: entry.barcode || "",
-      outerBarcode: entry.outerBarcode || "",
-      code: entry.code || "",
-      description: entry.description || "",
-      cartonSize: entry.cartonSize || "",
-      avgCost: entry.avgCost || "",
-    }));
-
-  return JSON.stringify({ items }, null, 2);
-}
-
-function getSourceSavePayload(saveUrl) {
-  const normalizedUrl = saveUrl.trim().toLowerCase();
-  const isJson = !normalizedUrl || normalizedUrl.endsWith(".json");
-  return isJson
-    ? { body: buildSourceCatalogJsonText(), contentType: "application/json", extension: "json" }
-    : { body: buildSourceCatalogCsvText(), contentType: "text/csv;charset=utf-8", extension: "csv" };
-}
-
-function downloadSourceCatalog(payload) {
-  const mimeType = payload.extension === "json" ? "application/json" : "text/csv;charset=utf-8;";
-  const fileName = payload.extension === "json" ? "source.json" : "source.csv";
-  const blob = new Blob([payload.body], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-async function persistUpdatedSourceCatalog() {
-  const saveUrl = sourceSaveUrlInput?.value?.trim() || "";
-  const payload = getSourceSavePayload(saveUrl);
-
-  if (!saveUrl) {
-    downloadSourceCatalog(payload);
-    return { mode: "downloaded", reason: "No Source Save URL configured." };
   }
-
-  const saveAttempt = await attemptRemoteSourceSave(saveUrl, payload);
-  if (saveAttempt.ok) {
-    localStorage.setItem(SOURCE_SAVE_URL_KEY, saveUrl);
-    return { mode: "remote-saved", method: saveAttempt.method };
+  if (errors.length) { showMessage(errors.join(" ")); return; }
+  let rowsWithCodes = 0; let rowsWithQuantities = 0;
+  parsedFiles.forEach(({ file, rows, columns }) => {
+    if (columns.quantity < 0) return;
+    rows.forEach((row, rowIndex) => {
+      const itemNumber = (row[columns.item] || "").trim();
+      if (!itemNumber) return;
+      rowsWithCodes += 1;
+      const quantity = cleanNumber(row[columns.quantity]);
+      if (!Number.isFinite(quantity)) { warnings.push(`${file.name}, row ${rowIndex + 2}: invalid quantity.`); return; }
+      rowsWithQuantities += 1;
+      const cartonValue = columns.carton >= 0 ? cleanNumber(row[columns.carton]) : 0;
+      const cartonSize = Number.isFinite(cartonValue) && cartonValue > 0 ? cartonValue : (cartonLookup.get(itemNumber.toLowerCase()) || 0);
+      const sourceItem = state.sourceItems.get(itemNumber.toLowerCase());
+      const uploadedDescription = columns.description >= 0 ? (row[columns.description] || "").trim() : "";
+      const description = sourceItem?.description || uploadedDescription;
+      const key = itemNumber.toLowerCase(); const existing = items.get(key);
+      if (existing) {
+        existing.quantity += quantity;
+        if (!existing.description && description) existing.description = description;
+        if (!existing.cartonSize && cartonSize) existing.cartonSize = cartonSize;
+        else if (cartonSize && existing.cartonSize !== cartonSize) existing.conflict = true;
+      } else items.set(key, { itemNumber, description, quantity, cartonSize, conflict:false });
+    });
+  });
+  state.compiled = [...items.values()].sort((a, b) => a.itemNumber.localeCompare(b.itemNumber, undefined, { numeric:true }));
+  if (!state.compiled.length) {
+    const detected = diagnostics.map(file => `${file.file}: detected ${file.codeColumn || "no code"}/${file.quantityColumn || "no quantity"} headers and ${file.rows} data rows`).join("; ");
+    showMessage(`No items could be compiled. ${detected}. Rows containing a product code: ${rowsWithCodes}; rows containing a valid quantity: ${rowsWithQuantities}.`);
+    return;
   }
+  renderResults();
+  showMessage(warnings.length ? `${warnings.length} row(s) with invalid quantities were skipped.` : "");
+  if (!warnings.length) hideMessage();
+}
 
-  downloadSourceCatalog(payload);
+function itemGroup(item) {
+  const code = item.itemNumber.trim().toUpperCase();
+  if (["SMP", "CHP"].some(prefix => code.startsWith(prefix))) return "topRight";
+  if (code.startsWith("SD")) return "bottomRight";
+  if (code !== "BK4119" && ["LH", "LA", "BK", "BR"].some(prefix => code.startsWith(prefix))) return "left";
+  return "other";
+}
+
+function cartonBreakdown(item) {
+  if (!item.cartonSize) return { cartons:0, singles:item.quantity };
   return {
-    mode: "downloaded-fallback",
-    reason: saveAttempt.reason,
+    cartons:Math.floor(item.quantity / item.cartonSize),
+    singles:item.quantity % item.cartonSize
   };
 }
 
-async function addEntryToSourceCatalog(entry, entryName) {
-  indexSourceEntry(entry);
-  saveLocalSourceAddition(entry);
-  updateSourceStatus(true);
-
-  const saveResult = await persistUpdatedSourceCatalog();
-  if (saveResult.mode === "remote-saved") {
-    window.alert(`${entryName} added and source catalog saved to Source Save URL using ${saveResult.method}.`);
-    return;
-  }
-  if (saveResult.mode === "downloaded-fallback") {
-    window.alert(`${entryName} added to browser storage. Could not save to Source Save URL (${saveResult.reason || "unknown error"}). Downloaded updated source file instead.`);
-    return;
-  }
-  window.alert(`${entryName} added to browser storage. Downloaded updated source file.`);
+function itemRows(items) {
+  if (!items.length) return '<p class="empty-group">No items</p>';
+  return `<table><thead><tr><th>Code</th><th>Description</th><th class="numeric">Carton</th><th class="numeric">Single</th></tr></thead><tbody>${items.map(item => {
+    const { cartons, singles } = cartonBreakdown(item);
+    return `<tr><td><strong>${escapeHTML(item.itemNumber)}</strong></td><td>${escapeHTML(item.description || "—")}</td><td class="numeric">${formatNumber(cartons)}</td><td class="numeric">${formatNumber(singles)}</td></tr>`;
+  }).join("")}</tbody></table>`;
 }
 
-async function attemptRemoteSourceSave(saveUrl, payload) {
-  const attemptErrors = [];
-  try {
-    for (const method of ["PUT", "POST"]) {
-      const response = await fetch(saveUrl, {
-        method,
-        headers: { "Content-Type": payload.contentType },
-        body: payload.body,
-      });
-
-      if (response.ok) {
-        return { ok: true, method };
-      }
-
-      const responseText = await response.text().catch(() => "");
-      attemptErrors.push(`${method} ${response.status}${responseText ? `: ${responseText.slice(0, 120)}` : ""}`);
-    }
-  } catch {
-    attemptErrors.push("Network/CORS error");
-  }
-
-  return {
-    ok: false,
-    reason: attemptErrors.join(" | "),
-  };
+function renderResults() {
+  const groups = { left:[], topRight:[], bottomRight:[], other:[] };
+  state.compiled.forEach(item => groups[itemGroup(item)].push(item));
+  document.querySelector("#leftItems").innerHTML = itemRows(groups.left);
+  document.querySelector("#topRightItems").innerHTML = itemRows(groups.topRight);
+  document.querySelector("#bottomRightItems").innerHTML = itemRows(groups.bottomRight);
+  document.querySelector("#otherItems").innerHTML = itemRows(groups.other);
+  document.querySelector("#otherGroup").hidden = !groups.other.length;
+  const totalUnits = state.compiled.reduce((sum, item) => sum + item.quantity, 0);
+  const totalCartons = state.compiled.reduce((sum, item) => sum + (item.cartonSize ? Math.floor(item.quantity / item.cartonSize) : 0), 0);
+  document.querySelector("#itemCount").textContent = formatNumber(state.compiled.length);
+  document.querySelector("#unitCount").textContent = formatNumber(totalUnits);
+  document.querySelector("#cartonCount").textContent = formatNumber(totalCartons);
+  document.querySelector("#resultsSubtitle").textContent = `${state.files.length} file${state.files.length === 1 ? "" : "s"} combined successfully.`;
+  elements.results.hidden = false; elements.results.scrollIntoView({ behavior:"smooth", block:"start" });
 }
 
-async function loadSourceCatalog() {
-  loadLocalSourceAdditions();
-  const configuredSourceUrl = sourceUrlInput?.value?.trim() || "";
-  const sourcePaths = configuredSourceUrl
-    ? [configuredSourceUrl]
-    : ["source.json", "./source.json", "/source.json", "source.csv", "./source.csv", "/source.csv"];
-  try {
-    for (const sourcePath of sourcePaths) {
-      const response = await fetch(sourcePath, { cache: "no-store" });
-      if (!response.ok) {
-        continue;
-      }
-      const text = await response.text();
-      const contentType = response.headers.get("content-type") || "";
-      const looksJson = sourcePath.toLowerCase().endsWith(".json") || contentType.includes("application/json");
-      const parsedCount = looksJson
-        ? parseSourceCatalogJson(text)
-        : parseSourceCatalogCsv(text);
-      if (!parsedCount) {
-        continue;
-      }
-      if (looksJson) {
-        updateSourceStatus(true, "JSON");
-      } else {
-        updateSourceStatus(true, "CSV");
-      }
-      if (sourceUrlInput && sourcePath === configuredSourceUrl && configuredSourceUrl) {
-        localStorage.setItem(SOURCE_URL_KEY, configuredSourceUrl);
-      }
-      return {
-        loaded: true,
-        count: sourceCatalogEntries.size,
-        sourcePath,
-        format: looksJson ? "JSON" : "CSV",
-      };
-    }
-    if (localSourceAdditions.size) {
-      mergeLocalSourceAdditions();
-      updateSourceStatus(true, "browser storage");
-      return { loaded: true, count: sourceCatalogEntries.size, sourcePath: "browser storage", format: "local" };
-    }
-    updateSourceStatus(false);
-    return { loaded: false, count: 0 };
-  } catch {
-    if (localSourceAdditions.size) {
-      mergeLocalSourceAdditions();
-      updateSourceStatus(true, "browser storage");
-      return { loaded: true, count: sourceCatalogEntries.size, sourcePath: "browser storage", format: "local" };
-    }
-    // source catalog is optional; ignore load errors when no local additions exist
-    updateSourceStatus(false);
-    return { loaded: false, count: 0 };
-  }
-}
-
-async function notifySourceCatalogStatusOnStartup() {
-  const result = await loadSourceCatalog();
-  if (result.loaded) {
-    window.alert(`Source catalog loaded from ${result.sourcePath} (${result.format}) with ${result.count} entries.`);
-  }
-}
-
-function normalizeNumericInput(value) {
-  return String(value ?? "").replace(/\D+/g, "");
-}
-
-function normalizeDateInput(value) {
-  const digits = String(value ?? "").replace(/\D/g, "").slice(0, 6);
-  if (digits.length <= 2) {
-    return digits;
-  }
-  if (digits.length <= 4) {
-    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  }
-  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 6)}`;
-}
-
-function formatDateForDisplay(value) {
-  const text = String(value ?? "").trim();
-  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (isoMatch) {
-    return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1].slice(-2)}`;
-  }
-  return text;
-}
-
-function displayDateToIso(value) {
-  const match = String(value ?? "").trim().match(/^(\d{2})\/(\d{2})\/(\d{2})$/);
-  return match ? `20${match[3]}-${match[2]}-${match[1]}` : "";
-}
-
-function attachNumericInputGuards() {
-  numericFieldNames.forEach((fieldName) => {
-    const input = editForm.elements[fieldName];
-    if (!input) {
-      return;
-    }
-
-    input.addEventListener("input", () => {
-      input.value = normalizeNumericInput(input.value);
-    });
+function downloadResults() {
+  const quote = value => `"${String(value).replace(/"/g, '""')}"`;
+  const header = ["Product Code", "Description", "Quantity", "Carton Size", "Carton", "Single"];
+  const lines = state.compiled.map(item => {
+    const { cartons, singles } = cartonBreakdown(item);
+    return [item.itemNumber, item.description, item.quantity, item.cartonSize || "", cartons, singles].map(quote).join(",");
   });
+  const url = URL.createObjectURL(new Blob([[header.join(","), ...lines].join("\r\n")], { type:"text/csv" }));
+  const link = document.createElement("a"); link.href = url; link.download = `compiled-inventory-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url);
 }
 
-function ensureAisleByName(name) {
-  const existing = aisles.find((aisle) => aisle.name === name);
-  if (existing) {
-    return existing;
-  }
-
-  const id = `aisle-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  const next = { id, name };
-  aisles.push(next);
-  renderAisleSelect();
-  return next;
-}
-
-function getItemsByCoordinate(coordinate) {
-  return inventoryItems
-    .map((item, index) => ({ ...item, index }))
-    .filter((item) => item.aisleId === currentAisleId && item.coordinate === coordinate);
-}
-
-function renderItemsList(target, coordinate, forEdit = false) {
-  const items = getItemsByCoordinate(coordinate);
-
-  if (items.length === 0) {
-    target.innerHTML = "<p>No items in this slot yet.</p>";
-    return;
-  }
-
-  const slotTotal = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
-  target.innerHTML =
-    items
-      .map(
-        (item, idx) => `
-      <div class="item-row">
-        <strong>Item ${idx + 1}</strong><br />
-        <strong>Product Code:</strong> ${item.code || "-"}<br />
-        <strong>Barcode:</strong> ${item.barcode || "-"}<br />
-        <strong>Avg Cost:</strong> ${item.avgCost || "-"}<br />
-        <strong>Description:</strong> ${item.description || "-"}<br />
-        <strong>Carton:</strong> ${item.carton || "-"}<br />
-        <strong>Carton Size:</strong> ${item.cartonSize || "-"}<br />
-        <strong>Single:</strong> ${item.single || "-"}<br />
-        <strong>Total Units:</strong> ${calculateItemTotal(item)}<br />
-        <strong>Total Cost:</strong> ${calculateTotalCost(item).toFixed(2)}<br />
-        <strong>Date:</strong> ${formatDateForDisplay(item.date) || "-"}<br />
-        <strong>Notes:</strong> ${item.notes || "-"}
-        ${forEdit ? `<div class="item-row-actions"><button type="button" class="edit-existing-item" data-item-index="${item.index}">Edit Item</button></div>` : ""}
-      </div>
-    `,
-      )
-      .join("") + `<p><strong>Slot Total Units:</strong> ${slotTotal}</p>`;
-}
-
-function resetEditState() {
-  editingItemIndex = null;
-  saveItemButton.textContent = "Add Item";
-  cancelItemEditButton.classList.add("hidden");
-  editForm.reset();
-}
-
-function startEditItem(itemIndex) {
-  const item = inventoryItems[itemIndex];
-  if (!item) {
-    return;
-  }
-
-  editingItemIndex = itemIndex;
-  saveItemButton.textContent = "Update Item";
-  cancelItemEditButton.classList.remove("hidden");
-
-  editForm.elements.code.value = item.code || "";
-  editForm.elements.barcode.value = item.barcode || "";
-  editForm.elements.avgCost.value = item.avgCost || "";
-  editForm.elements.description.value = item.description || "";
-  editForm.elements.carton.value = item.carton || "";
-  editForm.elements.single.value = item.single || "";
-  editForm.elements.cartonSize.value = item.cartonSize || "";
-  editForm.elements.date.value = formatDateForDisplay(item.date);
-  editForm.elements.notes.value = item.notes || "";
-}
-
-function openModal(modal) {
-  modalBackdrop.classList.remove("hidden");
-  modal.classList.remove("hidden");
-}
-
-function closeModals() {
-  modalBackdrop.classList.add("hidden");
-  editModal.classList.add("hidden");
-  viewModal.classList.add("hidden");
-  resetEditState();
-}
-
-function updateNavigationButtons() {
-  if (!currentEditCoordinate) {
-    return;
-  }
-  const { x, y } = coordinateToXY(currentEditCoordinate);
-  navigateLeftButton.disabled = x <= 0;
-  navigateRightButton.disabled = x >= MAX_X;
-  navigateDownButton.disabled = y <= 0;
-  navigateUpButton.disabled = y >= MAX_Y;
-}
-
-function navigateEditSlot(deltaX, deltaY) {
-  if (!currentEditCoordinate) {
-    return;
-  }
-  const { x, y } = coordinateToXY(currentEditCoordinate);
-  const nextX = x + deltaX;
-  const nextY = y + deltaY;
-  if (nextX < 0 || nextX > MAX_X || nextY < 0 || nextY > MAX_Y) {
-    return;
-  }
-  currentEditCoordinate = toCoordinate(nextX, nextY);
-  editCoordinateLabel.textContent = currentEditCoordinate;
-  resetEditState();
-  renderItemsList(editItemsList, currentEditCoordinate, true);
-  updateNavigationButtons();
-}
-
-function openSourceMenu() {
-  sourceMenuBackdrop.classList.remove("hidden");
-}
-
-function closeSourceMenu() {
-  sourceMenuBackdrop.classList.add("hidden");
-}
-
-function openOutputMenu() {
-  outputMenuBackdrop.classList.remove("hidden");
-}
-
-function closeOutputMenu() {
-  outputMenuBackdrop.classList.add("hidden");
-}
-
-function setCellVisualMode(cell, lockButton, inactive) {
-  const actionButtons = cell.querySelectorAll(".cell-action");
-  const tagInput = cell.querySelector(".cell-tag-input");
-
-  cell.dataset.mode = inactive ? "inactive" : "active";
-  cell.classList.toggle("inactive", inactive);
-  cell.classList.toggle("is-selected", false);
-
-  lockButton.classList.toggle("is-locked", inactive);
-  lockButton.textContent = inactive ? "🔒" : "🔓";
-
-  actionButtons.forEach((button) => {
-    button.disabled = inactive;
-  });
-
-  if (tagInput) {
-    tagInput.disabled = inactive;
-  }
-}
-
-function createCell(x, y) {
-  const coordinate = toCoordinate(x, y);
-  const existingItems = getItemsByCoordinate(coordinate);
-
-  const cell = document.createElement("div");
-  cell.className = "grid-cell";
-  if (existingItems.length > 0) {
-    cell.classList.add("has-data");
-  }
-  cell.dataset.x = String(x);
-  cell.dataset.y = String(y);
-  cell.dataset.coordinate = coordinate;
-  cell.setAttribute("tabindex", "0");
-  cell.setAttribute("aria-label", `Inventory slot ${coordinate}`);
-
-  const label = document.createElement("span");
-  label.className = "cell-coordinate";
-  label.textContent = coordinate;
-
-  const cellTagInput = document.createElement("input");
-  cellTagInput.type = "text";
-  cellTagInput.className = "cell-tag-input";
-  cellTagInput.maxLength = 24;
-  cellTagInput.value = getCellLabel(currentAisleId, x, y) || "Label";
-
-  const lockButton = document.createElement("button");
-  lockButton.type = "button";
-  lockButton.className = "lock-toggle";
-
-  const buttonWrap = document.createElement("div");
-  buttonWrap.className = "cell-buttons";
-
-  const viewButton = document.createElement("button");
-  viewButton.type = "button";
-  viewButton.className = "cell-action";
-  viewButton.textContent = "View";
-
-  const editButton = document.createElement("button");
-  editButton.type = "button";
-  editButton.className = "cell-action";
-  editButton.textContent = "Edit";
-
-  const saveTag = () => {
-    const nextValue = cellTagInput.value.trim() || "Label";
-    cellTagInput.value = nextValue;
-    if (nextValue.toLowerCase() === "label") {
-      setCellLabel(currentAisleId, x, y, "");
-    } else {
-      setCellLabel(currentAisleId, x, y, nextValue);
-    }
-    saveState();
-  };
-
-  cellTagInput.addEventListener("click", (event) => {
-    event.stopPropagation();
-    cellTagInput.select();
-  });
-
-  cellTagInput.addEventListener("blur", saveTag);
-  cellTagInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      cellTagInput.blur();
-    }
-  });
-
-  viewButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    viewCoordinateLabel.textContent = cell.dataset.coordinate;
-    renderItemsList(viewItemsList, cell.dataset.coordinate);
-    openModal(viewModal);
-  });
-
-  editButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    currentEditCoordinate = cell.dataset.coordinate;
-    editCoordinateLabel.textContent = currentEditCoordinate;
-    renderItemsList(editItemsList, currentEditCoordinate, true);
-    resetEditState();
-    updateNavigationButtons();
-    openModal(editModal);
-  });
-
-  lockButton.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const nextInactive = cell.dataset.mode !== "inactive";
-    setCellModeValue(currentAisleId, x, y, nextInactive ? "inactive" : "active");
-    setCellVisualMode(cell, lockButton, nextInactive);
-    saveState();
-  });
-
-  cell.addEventListener("click", (event) => {
-    if (event.target.closest("button") || event.target.closest("input") || cell.dataset.mode === "inactive") {
-      return;
-    }
-    cell.classList.toggle("is-selected");
-  });
-
-  buttonWrap.appendChild(viewButton);
-  buttonWrap.appendChild(editButton);
-
-  cell.appendChild(label);
-  cell.appendChild(cellTagInput);
-  cell.appendChild(lockButton);
-  cell.appendChild(buttonWrap);
-
-  setCellVisualMode(cell, lockButton, getCellMode(currentAisleId, x, y) === "inactive");
-  return cell;
-}
-
-function renderGrid() {
-  grid.innerHTML = "";
-
-  for (let y = MAX_Y; y >= 0; y -= 1) {
-    for (let x = 0; x <= MAX_X; x += 1) {
-      grid.appendChild(createCell(x, y));
-    }
-  }
-}
-
-function renderAisleSelect() {
-  aisleSelect.innerHTML = aisles.map((aisle) => `<option value="${aisle.id}">${aisle.name}</option>`).join("");
-  aisleSelect.value = currentAisleId;
-}
-
-function toDateStamp(date = new Date()) {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = String(date.getFullYear()).slice(-2);
-  return `${day}${month}${year}`;
-}
-
-function sanitizeFileTitle(value) {
-  return String(value || "")
-    .trim()
-    .replace(/\s+/g, "_")
-    .replace(/[^a-zA-Z0-9_-]/g, "")
-    .toLowerCase();
-}
-
-function serializeState() {
-  return {
-    version: 1,
-    exportTitle,
-    exportDateStamp,
-    currentAisleId,
-    aisles: [...aisles],
-    inventoryItems: [...inventoryItems],
-    cellModes: Object.fromEntries(cellModes.entries()),
-    cellLabels: Object.fromEntries(cellLabels.entries()),
-  };
-}
-
-function applyState(state) {
-  if (!state || !Array.isArray(state.aisles) || !Array.isArray(state.inventoryItems)) {
-    return;
-  }
-
-  exportTitle = sanitizeFileTitle(state.exportTitle || "inventory") || "inventory";
-  exportDateStamp = /^\d{8}$/.test(state.exportDateStamp || "") ? state.exportDateStamp : "";
-
-  aisles.length = 0;
-  state.aisles.forEach((aisle) => aisles.push(aisle));
-
-  inventoryItems.length = 0;
-  state.inventoryItems.forEach((item) => inventoryItems.push(item));
-
-  cellModes.clear();
-  Object.entries(state.cellModes || {}).forEach(([key, value]) => cellModes.set(key, value));
-
-  cellLabels.clear();
-  Object.entries(state.cellLabels || {}).forEach(([key, value]) => cellLabels.set(key, value));
-
-  currentAisleId = aisles.some((aisle) => aisle.id === state.currentAisleId)
-    ? state.currentAisleId
-    : aisles[0]?.id || "default";
-
-  renderAisleSelect();
-  renderGrid();
-}
-
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState()));
-}
-
-function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    return;
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    applyState(parsed);
-  } catch {
-    // ignore bad local state
-  }
-}
-
-editItemsList.addEventListener("click", (event) => {
-  const button = event.target.closest(".edit-existing-item");
-  if (!button) {
-    return;
-  }
-
-  startEditItem(Number(button.dataset.itemIndex));
+elements.fileInput.addEventListener("change", event => { addFiles(event.target.files); event.target.value = ""; });
+["dragenter", "dragover"].forEach(type => elements.dropZone.addEventListener(type, event => { event.preventDefault(); elements.dropZone.classList.add("dragging"); }));
+["dragleave", "drop"].forEach(type => elements.dropZone.addEventListener(type, event => { event.preventDefault(); elements.dropZone.classList.remove("dragging"); }));
+elements.dropZone.addEventListener("drop", event => addFiles(event.dataTransfer.files));
+elements.fileList.addEventListener("click", event => { const button = event.target.closest(".remove-file"); if (button) { state.files.splice(Number(button.dataset.index), 1); renderFiles(); } });
+elements.clear.addEventListener("click", () => { state.files = []; state.compiled = []; elements.results.hidden = true; hideMessage(); renderFiles(); });
+elements.compile.addEventListener("click", compileFiles);
+document.querySelector("#downloadButton").addEventListener("click", downloadResults);
+document.querySelector("#printButton").addEventListener("click", () => window.print());
+document.querySelector("#sourceInput").addEventListener("change", async event => {
+  const [file] = event.target.files;
+  if (!file) return;
+  try { await useSource(file.name, decodeCSV(await file.arrayBuffer())); hideMessage(); }
+  catch (error) { showMessage(`Could not read ${file.name}: ${error.message}`); }
+  event.target.value = "";
 });
-
-cancelItemEditButton.addEventListener("click", () => {
-  resetEditState();
-  if (currentEditCoordinate) {
-    const { x, y } = coordinateToXY(currentEditCoordinate);
-  }
-});
-
-editForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-
-  if (!currentEditCoordinate) {
-    return;
-  }
-
-  const formData = new FormData(editForm);
-  const nextItem = {
-    aisleId: currentAisleId,
-    coordinate: currentEditCoordinate,
-    code: formData.get("code")?.toString().trim() || "",
-    barcode: formData.get("barcode")?.toString().trim() || "",
-    avgCost: formData.get("avgCost")?.toString().trim() || "",
-    description: formData.get("description")?.toString().trim() || "",
-    carton: normalizeNumericInput(formData.get("carton")?.toString().trim() || ""),
-    cartonSize: normalizeNumericInput(formData.get("cartonSize")?.toString().trim() || ""),
-    single: normalizeNumericInput(formData.get("single")?.toString().trim() || ""),
-    date: formData.get("date")?.toString().trim() || "",
-    notes: formData.get("notes")?.toString().trim() || "",
-  };
-
-  if (editingItemIndex !== null && inventoryItems[editingItemIndex]) {
-    inventoryItems[editingItemIndex] = nextItem;
-  } else {
-    inventoryItems.push(nextItem);
-  }
-
-  renderGrid();
-  renderItemsList(editItemsList, currentEditCoordinate, true);
-  resetEditState();
-  saveState();
-});
-
-clearCellButton.addEventListener("click", () => {
-  if (!currentEditCoordinate) {
-    return;
-  }
-
-  const aisleName = aisles.find((entry) => entry.id === currentAisleId)?.name || "this aisle";
-  const confirmed = window.confirm(`Clear all items in ${currentEditCoordinate} (${aisleName})?`);
-  if (!confirmed) {
-    return;
-  }
-
-  for (let index = inventoryItems.length - 1; index >= 0; index -= 1) {
-    const item = inventoryItems[index];
-    if (item.aisleId === currentAisleId && item.coordinate === currentEditCoordinate) {
-      inventoryItems.splice(index, 1);
-    }
-  }
-
-  renderItemsList(editItemsList, currentEditCoordinate, true);
-  resetEditState();
-  saveState();
-});
-
-closeEditButton.addEventListener("click", closeModals);
-closeViewButton.addEventListener("click", closeModals);
-closeEditTopButton.addEventListener("click", closeModals);
-closeViewTopButton.addEventListener("click", closeModals);
-navigateUpButton.addEventListener("click", () => navigateEditSlot(0, 1));
-navigateDownButton.addEventListener("click", () => navigateEditSlot(0, -1));
-navigateLeftButton.addEventListener("click", () => navigateEditSlot(-1, 0));
-navigateRightButton.addEventListener("click", () => navigateEditSlot(1, 0));
-openSourceMenuButton.addEventListener("click", openSourceMenu);
-closeSourceMenuButton.addEventListener("click", closeSourceMenu);
-closeSourceMenuTopButton.addEventListener("click", closeSourceMenu);
-openOutputMenuButton.addEventListener("click", openOutputMenu);
-closeOutputMenuButton.addEventListener("click", closeOutputMenu);
-closeOutputMenuTopButton.addEventListener("click", closeOutputMenu);
-barcodeLookupButton.addEventListener("click", async () => {
-  const barcode = normalizeBarcode(editForm.elements.barcode.value);
-  if (!barcode) {
-    window.alert("Enter a barcode first.");
-    return;
-  }
-
-  let match = sourceCatalogByScanCode.get(barcode);
-  if (!match) {
-    await loadSourceCatalog();
-    match = sourceCatalogByScanCode.get(barcode);
-  }
-  if (!match) {
-    const shouldAdd = window.confirm("Barcode doesn't exist, add it to the source?");
-    if (!shouldAdd) {
-      window.alert("Barcode not found in source catalog.");
-      return;
-    }
-
-    const code = editForm.elements.code.value?.trim() || "";
-    const description = editForm.elements.description.value?.trim() || "";
-    const cartonSize = editForm.elements.cartonSize.value?.trim() || "";
-    const avgCost = editForm.elements.avgCost.value?.trim() || "";
-
-    if (!code || !description || !cartonSize) {
-      window.alert("To add a missing barcode, fill Product Code, Description, and Carton Size first.");
-      return;
-    }
-
-    await addEntryToSourceCatalog({ barcode, outerBarcode: "", code, description, cartonSize, avgCost }, "Barcode");
-    return;
-  }
-
-  editForm.elements.code.value = match.code || editForm.elements.code.value;
-  editForm.elements.description.value = match.description || editForm.elements.description.value;
-  editForm.elements.cartonSize.value = match.cartonSize || editForm.elements.cartonSize.value;
-  editForm.elements.avgCost.value = match.avgCost || editForm.elements.avgCost.value;
-});
-
-codeLookupButton.addEventListener("click", async () => {
-  const productCode = editForm.elements.code.value?.trim().toUpperCase() || "";
-  if (!productCode) {
-    window.alert("Enter a product code first.");
-    return;
-  }
-
-  let match = sourceCatalogByProductCode.get(productCode);
-  if (!match) {
-    await loadSourceCatalog();
-    match = sourceCatalogByProductCode.get(productCode);
-  }
-
-  if (!match) {
-    const shouldAdd = window.confirm("Product code doesn't exist, add it to the source?");
-    if (!shouldAdd) {
-      window.alert("Product code not found in source catalog.");
-      return;
-    }
-
-    const barcode = normalizeBarcode(editForm.elements.barcode.value);
-    const description = editForm.elements.description.value?.trim() || "";
-    const cartonSize = editForm.elements.cartonSize.value?.trim() || "";
-    const avgCost = editForm.elements.avgCost.value?.trim() || "";
-
-    if (!description || !cartonSize) {
-      window.alert("To add a missing product code, fill Description and Carton Size first. Barcode is optional.");
-      return;
-    }
-
-    await addEntryToSourceCatalog({
-      barcode,
-      outerBarcode: "",
-      code: productCode,
-      description,
-      cartonSize,
-      avgCost,
-    }, "Product code");
-    return;
-  }
-
-  editForm.elements.cartonSize.value = match.cartonSize || editForm.elements.cartonSize.value;
-  editForm.elements.barcode.value = match.barcode || editForm.elements.barcode.value;
-  editForm.elements.description.value = match.description || editForm.elements.description.value;
-  editForm.elements.avgCost.value = match.avgCost || editForm.elements.avgCost.value;
-});
-
-newAisleButton.addEventListener("click", () => {
-  const name = window.prompt("Enter new aisle name:", "Aisle 2")?.trim();
-  if (!name) {
-    return;
-  }
-
-  const aisle = ensureAisleByName(name);
-  currentAisleId = aisle.id;
-  renderAisleSelect();
-  renderGrid();
-  saveState();
-});
-
-aisleSelect.addEventListener("change", () => {
-  currentAisleId = aisleSelect.value;
-  renderGrid();
-  saveState();
-});
-
-exportCsvButton.addEventListener("click", () => {
-  const header = ["Aisle", "Coordinate", "Product Code", "Barcode", "Description", "Carton", "Carton Size", "Single", "Total Units", "Avg Cost", "Total Cost", "Date", "Notes"];
-  const lines = [header.join(",")];
-
-  inventoryItems.forEach((item) => {
-    const aisleName = aisles.find((entry) => entry.id === item.aisleId)?.name || "";
-    lines.push([
-      escapeCsv(aisleName),
-      escapeCsv(item.coordinate),
-      escapeCsv(item.code),
-      escapeCsv(item.barcode),
-      escapeCsv(item.description),
-      escapeCsv(item.carton),
-      escapeCsv(item.cartonSize),
-      escapeCsv(item.single),
-      escapeCsv(calculateItemTotal(item)),
-      escapeCsv(item.avgCost),
-      escapeCsv(calculateTotalCost(item).toFixed(2)),
-      escapeCsv(item.date),
-      escapeCsv(item.notes),
-    ].join(","));
-  });
-
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  const safeTitle = sanitizeFileTitle(exportTitle) || "inventory";
-  const suffix = exportDateStamp || toDateStamp();
-  link.download = `${safeTitle}_${suffix}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-});
-
-importCsvButton.addEventListener("click", () => {
-  csvFileInput.click();
-});
-
-loadSourceCsvButton.addEventListener("click", () => {
-  sourceFileInput.click();
-});
-
-loadSourceUrlButton.addEventListener("click", async () => {
-  const sourceUrl = sourceUrlInput?.value?.trim() || "";
-  if (!sourceUrl) {
-    window.alert("Enter a source URL first.");
-    return;
-  }
-
-  const result = await loadSourceCatalog();
-  if (result.loaded) {
-    window.alert(`Source URL loaded (${result.format}): ${result.count} entries.`);
-    return;
-  }
-
-  window.alert("Could not load source URL. Check URL and CORS settings.");
-});
-
-testSourceSaveUrlButton.addEventListener("click", async () => {
-  const saveUrl = sourceSaveUrlInput?.value?.trim() || "";
-  if (!saveUrl) {
-    window.alert("Enter a Source Save URL first.");
-    return;
-  }
-
-  const payload = getSourceSavePayload(saveUrl);
-  const result = await attemptRemoteSourceSave(saveUrl, payload);
-  if (result.ok) {
-    window.alert(`Save URL test succeeded using ${result.method}.`);
-    localStorage.setItem(SOURCE_SAVE_URL_KEY, saveUrl);
-    return;
-  }
-
-  window.alert(`Save URL test failed: ${result.reason || "Unknown error"}`);
-});
-
-downloadSourceButton.addEventListener("click", () => {
-  const saveUrl = sourceSaveUrlInput?.value?.trim() || "";
-  downloadSourceCatalog(getSourceSavePayload(saveUrl));
-});
-
-sourceFileInput.addEventListener("change", async () => {
-  const file = sourceFileInput.files?.[0];
-  if (!file) {
-    return;
-  }
-
-  try {
-    const text = await file.text();
-    const looksJson = file.name.toLowerCase().endsWith(".json") || text.trim().startsWith("{") || text.trim().startsWith("[");
-    const parsedCount = looksJson
-      ? parseSourceCatalogJson(text)
-      : parseSourceCatalogCsv(text);
-    if (!parsedCount) {
-      updateSourceStatus(false);
-      window.alert("Source file loaded but no valid barcode entries were found.");
-      return;
-    }
-    if (looksJson) {
-      updateSourceStatus(true, "JSON");
-    } else {
-      updateSourceStatus(true, "CSV");
-    }
-    window.alert(`Source file loaded: ${sourceCatalogEntries.size} entries.`);
-  } catch {
-    updateSourceStatus(false);
-    window.alert("Invalid source file (CSV/JSON).");
-  }
-
-  sourceFileInput.value = "";
-});
-
-csvFileInput.addEventListener("change", async () => {
-  const file = csvFileInput.files?.[0];
-  if (!file) {
-    return;
-  }
-
-  const text = await file.text();
-  const rows = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (rows.length < 2) {
-    return;
-  }
-
-  inventoryItems.length = 0;
-
-  for (let index = 1; index < rows.length; index += 1) {
-    const columns = parseCsvLine(rows[index]);
-    const [aisleName = "Inventory", coordinate = "", code = "", maybeBarcodeOrDescription = "", maybeDescriptionOrCarton = "", maybeCartonOrCartonSize = "", maybeCartonSizeOrSingle = "", maybeSingleOrTotal = "", maybeTotalOrAvgCost = "", maybeAvgCostOrTotalCostOrDate = "", maybeTotalCostOrDateOrNotes = "", maybeDateOrNotes = "", maybeNotes = ""] = columns;
-
-    const aisle = ensureAisleByName(aisleName || "Inventory");
-    const hasCostColumns = columns.length >= 13;
-    const hasBarcodeColumn = columns.length >= 11;
-    const barcode = hasBarcodeColumn ? maybeBarcodeOrDescription : "";
-    const description = hasBarcodeColumn ? maybeDescriptionOrCarton : maybeBarcodeOrDescription;
-    const carton = hasBarcodeColumn ? maybeCartonOrCartonSize : maybeDescriptionOrCarton;
-    const cartonSize = hasBarcodeColumn ? maybeCartonSizeOrSingle : maybeCartonOrCartonSize;
-    const single = hasBarcodeColumn ? maybeSingleOrTotal : maybeCartonSizeOrSingle;
-    const avgCost = hasCostColumns ? maybeAvgCostOrTotalCostOrDate : "";
-    const date = hasCostColumns
-      ? maybeDateOrNotes
-      : hasBarcodeColumn
-        ? maybeAvgCostOrTotalCostOrDate
-        : maybeTotalOrAvgCost;
-    const notes = hasCostColumns
-      ? maybeNotes
-      : hasBarcodeColumn
-        ? maybeTotalCostOrDateOrNotes
-        : maybeAvgCostOrTotalCostOrDate;
-
-    inventoryItems.push({
-      aisleId: aisle.id,
-      coordinate,
-      code,
-      barcode,
-      avgCost,
-      description,
-      carton,
-      cartonSize,
-      single,
-      date,
-      notes,
-    });
-  }
-
-  renderAisleSelect();
-  renderGrid();
-  csvFileInput.value = "";
-  saveState();
-});
-
-exportJsonButton.addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify(serializeState(), null, 2)], { type: "application/json;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "inventory-state.json";
-  link.click();
-  URL.revokeObjectURL(url);
-});
-
-importJsonButton.addEventListener("click", () => {
-  jsonFileInput.click();
-});
-
-resetCellDataButton.addEventListener("click", () => {
-  const confirmed = window.confirm("Reset all current cell data (items, labels, lock states) and keep aisles?");
-  if (!confirmed) {
-    return;
-  }
-
-  const enteredTitle = window.prompt("Enter spreadsheet title for export filename:", exportTitle || "inventory")?.trim();
-  if (!enteredTitle) {
-    window.alert("Reset canceled: title is required.");
-    return;
-  }
-
-  inventoryItems.length = 0;
-  cellModes.clear();
-  cellLabels.clear();
-  exportTitle = sanitizeFileTitle(enteredTitle) || "inventory";
-  exportDateStamp = toDateStamp();
-
-  renderGrid();
-  saveState();
-  window.alert(`Cell data has been reset. Aisles were kept. Export filename suffix set to ${exportDateStamp}.`);
-});
-
-jsonFileInput.addEventListener("change", async () => {
-  const file = jsonFileInput.files?.[0];
-  if (!file) {
-    return;
-  }
-
-  try {
-    const parsed = JSON.parse(await file.text());
-    applyState(parsed);
-    saveState();
-  } catch {
-    window.alert("Invalid JSON state file.");
-  }
-
-  jsonFileInput.value = "";
-});
-
-attachNumericInputGuards();
-editForm.elements.date.addEventListener("input", () => {
-  editForm.elements.date.value = normalizeDateInput(editForm.elements.date.value);
-});
-
-pickDateButton.addEventListener("click", () => {
-  const currentValue = editForm.elements.date.value?.trim() || "";
-  const isoDate = displayDateToIso(currentValue);
-  if (isoDate) {
-    nativeDatePicker.value = isoDate;
-  }
-
-  if (typeof nativeDatePicker.showPicker === "function") {
-    nativeDatePicker.showPicker();
-  } else {
-    nativeDatePicker.click();
-  }
-});
-
-nativeDatePicker.addEventListener("change", () => {
-  if (nativeDatePicker.value) {
-    editForm.elements.date.value = formatDateForDisplay(nativeDatePicker.value);
-  }
-});
-
-const savedSourceUrl = localStorage.getItem(SOURCE_URL_KEY);
-if (sourceUrlInput && savedSourceUrl) {
-  sourceUrlInput.value = savedSourceUrl;
-}
-const savedSourceSaveUrl = localStorage.getItem(SOURCE_SAVE_URL_KEY);
-if (sourceSaveUrlInput && savedSourceSaveUrl) {
-  sourceSaveUrlInput.value = savedSourceSaveUrl;
-}
-notifySourceCatalogStatusOnStartup();
-loadState();
-renderAisleSelect();
-renderGrid();
+loadInventorySource();
